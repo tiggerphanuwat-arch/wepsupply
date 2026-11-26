@@ -11,22 +11,13 @@
 <style>
 /* Layout: staff get one "send an amount" screen; the owner gets an inbox to pay by PromptPay QR, the paper-style daily sheet, contacts, a monthly summary and a printable PDF */
 :root{
-  --bg:#F2F5F4; --surface:#FFFFFF; --surface-2:#EBF1EF; --line:#D8E1DE;
-  --ink:#13211D; --muted:#5E716B; --accent:#0B7A63; --accent-ink:#FFFFFF; --accent-soft:#DCF1EA;
-  --sup:#0B7A63; --market:#B4570B; --supply:#5B4FC4; --personal:#B83280; --office:#2B6CB0; --repair:#8A5A00; --welfare:#0E7490;
+  --bg:#FFFBEA; --surface:#FFFFFF; --surface-2:#FFF5CC; --line:#F0E3AE;
+  --ink:#2A2410; --muted:#6F6647; --accent:#806000; --brand:#FACC15; --accent-ink:#2A2410; --accent-soft:#FFF1B3;
+  --sup:#806000; --market:#B4570B; --supply:#5B4FC4; --personal:#B83280; --office:#2B6CB0; --repair:#7A4A2A; --welfare:#0E7490;
   --good:#167A3E; --good-soft:#DCF3E4; --bad:#B42318; --bad-soft:#FBE1DE; --warn:#B45309; --warn-soft:#FDEBD3; --blue:#1D4ED8;
   --font:"IBM Plex Sans Thai",-apple-system,"Sukhumvit Set","Thonburi",system-ui,sans-serif;
-}
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --bg:#0E1513; --surface:#16201D; --surface-2:#1C2925; --line:#2A3A35;
-  --ink:#E6EEEB; --muted:#94A7A1; --accent:#3CC5A2; --accent-ink:#06201A; --accent-soft:#153A30;
-  --sup:#3CC5A2; --market:#F2A54A; --supply:#A79CFF; --personal:#F38BC4; --office:#7FB2F0; --repair:#E0B45C; --welfare:#5CC8DE;
-  --good:#5BD38A; --good-soft:#15301F; --bad:#FF8A7A; --bad-soft:#3D1A16; --warn:#F2A54A; --warn-soft:#3A2810; --blue:#8AB4FF; color-scheme:dark}}
-:root[data-theme="dark"]{
-  --bg:#0E1513; --surface:#16201D; --surface-2:#1C2925; --line:#2A3A35;
-  --ink:#E6EEEB; --muted:#94A7A1; --accent:#3CC5A2; --accent-ink:#06201A; --accent-soft:#153A30;
-  --sup:#3CC5A2; --market:#F2A54A; --supply:#A79CFF; --personal:#F38BC4; --office:#7FB2F0; --repair:#E0B45C; --welfare:#5CC8DE;
-  --good:#5BD38A; --good-soft:#15301F; --bad:#FF8A7A; --bad-soft:#3D1A16; --warn:#F2A54A; --warn-soft:#3A2810; --blue:#8AB4FF; color-scheme:dark}
+
+  color-scheme:light}
 *{box-sizing:border-box}
 html,body{height:100%}
 body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.45;-webkit-tap-highlight-color:transparent}
@@ -40,7 +31,7 @@ input,textarea{font:inherit;color:var(--ink)}
 main{padding-left:max(14px,env(safe-area-inset-left,0px));padding-right:max(14px,env(safe-area-inset-right,0px));padding-block:12px calc(150px + env(safe-area-inset-bottom,0px));max-width:1180px;width:100%;margin:0 auto;min-width:0}
 .head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
 .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px}
-.mark{width:34px;height:34px;border-radius:10px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-weight:700;flex:none}
+.mark{width:34px;height:34px;border-radius:10px;background:var(--brand);color:var(--accent-ink);display:grid;place-items:center;font-weight:700;flex:none}
 .headr{display:flex;align-items:center;gap:8px;margin-left:auto}
 .sync{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;white-space:nowrap}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--muted)} .dot.ok{background:var(--good)} .dot.warn{background:var(--warn)}
@@ -102,7 +93,7 @@ main{padding-left:max(14px,env(safe-area-inset-left,0px));padding-right:max(14px
 .req .meta{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
 .pill{display:inline-flex;align-items:center;border-radius:999px;padding:2px 10px;font-size:12px;font-weight:600;white-space:nowrap;justify-self:end}
 .pill.warn{background:var(--warn-soft);color:var(--warn)} .pill.good{background:var(--good-soft);color:var(--good)} .pill.bad{background:var(--bad-soft);color:var(--bad)} .pill.info{background:var(--accent-soft);color:var(--accent)}
-.paybtn{height:38px;padding:0 14px;border-radius:10px;border:0;background:var(--accent);color:var(--accent-ink);font-weight:700;font-size:14px;justify-self:end}
+.paybtn{height:38px;padding:0 14px;border-radius:10px;border:0;background:var(--brand);color:var(--accent-ink);font-weight:700;font-size:14px;justify-self:end}
 
 .cashbox{padding:12px 14px;display:grid;gap:10px}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -115,7 +106,7 @@ main{padding-left:max(14px,env(safe-area-inset-left,0px));padding-right:max(14px
 .ovr div{border-radius:12px;padding:10px 12px;background:var(--surface-2)}
 .ovr .k{font-size:12px;color:var(--muted)} .ovr .v{font-size:18px;font-weight:700}
 .ovr .over .v{color:var(--blue)} .ovr .short .v{color:var(--bad)}
-.grand{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.grand{background:var(--brand);color:var(--accent-ink);border-color:var(--brand)}
 .grand .sec-h{border:0}
 .grand .btn{color:var(--ink)}
 .tt{padding:0 14px 14px;display:grid;gap:10px}
@@ -131,7 +122,7 @@ main{padding-left:max(14px,env(safe-area-inset-left,0px));padding-right:max(14px
 .sticky .k{font-size:11px;color:var(--muted)} .sticky .v{font-size:18px;font-weight:700;white-space:nowrap}
 .sticky .pair{display:flex;gap:16px;min-width:0}
 .btn{height:46px;padding:0 16px;border-radius:12px;border:1px solid var(--line);background:var(--surface);font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap}
-.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:var(--accent-ink)}
 .btn.danger{color:var(--bad);background:var(--bad-soft);border-color:transparent}
 .btn.block{width:100%}
 .btn.sm{height:38px;padding:0 12px;font-size:14px}
@@ -142,10 +133,10 @@ main{padding-left:max(14px,env(safe-area-inset-left,0px));padding-right:max(14px
 .hello{font-size:22px;font-weight:700;margin:4px 0 0}
 .mode{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:4px}
 .mode button{height:44px;border:0;border-radius:10px;background:none;font-weight:600;color:var(--muted)}
-.mode button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.mode button[aria-pressed="true"]{background:var(--brand);color:var(--accent-ink)}
 .step{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px;display:grid;gap:10px;min-width:0}
 .step h2{margin:0;font-size:16px;display:flex;align-items:center;gap:8px}
-.step h2 i{font-style:normal;width:24px;height:24px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-size:13px;flex:none}
+.step h2 i{font-style:normal;width:24px;height:24px;border-radius:50%;background:var(--brand);color:var(--accent-ink);display:grid;place-items:center;font-size:13px;flex:none}
 .bigamt{height:64px;font-size:30px;font-weight:700;text-align:center;border-radius:14px}
 .sendbtn{height:56px;font-size:18px}
 .gseg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
@@ -162,7 +153,7 @@ main{padding-left:max(14px,env(safe-area-inset-left,0px));padding-right:max(14px
 .info .it .chkrow,.info .it .btn,.info .it .inp{grid-column:1}
 .chkrow small{display:block;font-weight:400;font-size:12px;color:var(--muted)}
 .chkrow[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
-.chkrow[aria-pressed="true"] i{background:var(--accent);border-color:var(--accent);color:#fff}
+.chkrow[aria-pressed="true"] i{background:var(--brand);border-color:var(--brand);color:var(--accent-ink)}
 .paytog.mk{border-style:dashed}
 .paytog.mk[aria-pressed="true"]{background:var(--warn-soft);color:var(--warn);border-color:transparent;border-style:solid}
 [hidden]{display:none!important}
@@ -215,18 +206,18 @@ main{padding-left:max(14px,env(safe-area-inset-left,0px));padding-right:max(14px
 .info .cp{grid-column:2;grid-row:1/3;height:34px;padding:0 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface);font-size:13px;font-weight:600}
 .seg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
 .seg button{height:42px;border-radius:10px;border:1px solid var(--line);background:var(--surface);font-size:14px}
-.seg button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:700}
+.seg button[aria-pressed="true"]{background:var(--brand);border-color:var(--brand);color:var(--accent-ink);font-weight:700}
 .acts{display:grid;grid-template-columns:1fr 2fr;gap:10px}
-.qrcard{display:grid;justify-items:center;gap:8px;padding:14px;border-radius:16px;background:#fff;color:#13211D;border:1px solid var(--line)}
+.qrcard{display:grid;justify-items:center;gap:8px;padding:14px;border-radius:16px;background:#fff;color:#2A2410;border:1px solid var(--line)}
 .qrcard .pp{font-size:12px;font-weight:700;letter-spacing:.06em;color:#0B3D91}
 .qrcard svg{width:min(240px,62vw);height:auto;display:block}
 .qrcard .qamt{font-size:26px;font-weight:700}
-.qrcard .qto{font-size:13px;color:#5E716B;text-align:center}
+.qrcard .qto{font-size:13px;color:#6F6647;text-align:center}
 .payamt{font-size:34px;font-weight:700;text-align:center}
 .toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;border:1px solid var(--line);border-radius:12px}
 .switch{width:52px;height:30px;border-radius:15px;border:0;background:var(--line);position:relative;flex:none}
 .switch::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:left .15s}
-.switch[aria-checked="true"]{background:var(--accent)}
+.switch[aria-checked="true"]{background:var(--brand)}
 .switch[aria-checked="true"]::after{left:25px}
 .linkbox{font-size:13px;word-break:break-all;background:var(--surface-2);border-radius:10px;padding:8px 10px}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(140px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:14px;z-index:70;max-width:calc(100% - 32px)}
@@ -237,7 +228,7 @@ main{padding-left:max(14px,env(safe-area-inset-left,0px));padding-right:max(14px
 .lockin h2{margin:0;font-size:20px}
 .pins{display:flex;gap:14px}
 .pins i{width:16px;height:16px;border-radius:50%;border:2px solid var(--accent)}
-.pins i.on{background:var(--accent)}
+.pins i.on{background:var(--brand)}
 .pins.err{animation:shake .3s}
 @keyframes shake{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
 .pad{display:grid;grid-template-columns:repeat(3,76px);gap:12px}
@@ -249,7 +240,7 @@ main{padding-left:max(14px,env(safe-area-inset-left,0px));padding-right:max(14px
 .kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:14px}
 .kpi{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px;min-width:0}
 .kpi .k{font-size:12px;color:var(--muted)} .kpi .v{font-size:20px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.kpi.t{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)} .kpi.t .k{color:inherit;opacity:.85}
+.kpi.t{background:var(--brand);border-color:var(--brand);color:var(--accent-ink)} .kpi.t .k{color:inherit;opacity:.85}
 .chart{padding:12px 14px;overflow-x:auto}
 .bars{display:flex;align-items:flex-end;gap:3px;height:130px;min-width:420px;border-bottom:1px solid var(--line)}
 .bcol{flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;cursor:pointer}
@@ -319,7 +310,7 @@ const DEFAULTS={
   supply:["แก๊ส","ค่าวิน","ค่าถุงพลาสติก"]
 };
 const GROUPS={
-  sup:{t:"ซัพพลายเออร์",s:"โอนเงิน",c:"#0B7A63",core:true},
+  sup:{t:"ซัพพลายเออร์",s:"โอนเงิน",c:"#806000",core:true},
   market:{t:"ของตลาด",s:"เงินสด",c:"#B4570B",core:true,named:true},
   supply:{t:"ค่าวัสดุสิ้นเปลือง",s:"เงินสด",c:"#5B4FC4",named:true},
   personal:{t:"ส่วนตัว",s:"ค่าใช้จ่ายอื่น",c:"#B83280"},
@@ -986,19 +977,19 @@ async function makePdf(){
   const F=(w,s)=>w+" "+s+'px "IBM Plex Sans Thai","Thonburi",sans-serif';
   x.fillStyle="#fff";x.fillRect(0,0,W,H);x.textBaseline="middle";
   const {t,supRows,grp}=sheetData();
-  x.fillStyle="#13211D";x.font=F(700,34);x.fillText("ค่าใช้จ่ายรายวัน",M,M+18);
+  x.fillStyle="#2A2410";x.font=F(700,34);x.fillText("ค่าใช้จ่ายรายวัน",M,M+18);
   x.font=F(500,24);x.fillText(thD(S.date),M,M+58);
-  x.textAlign="right";x.font=F(400,16);x.fillStyle="#5E716B";x.fillText("พิมพ์เมื่อ "+new Date().toLocaleString("th-TH"),W-M,M+18);x.textAlign="left";
+  x.textAlign="right";x.font=F(400,16);x.fillStyle="#6F6647";x.fillText("พิมพ์เมื่อ "+new Date().toLocaleString("th-TH"),W-M,M+18);x.textAlign="left";
   const top=M+92,colW=(W-M*2-24)/2,lx=M,rx=M+colW+24;
   const fitTxt=(s,w)=>{s=String(s||"");if(x.measureText(s).width<=w)return s;while(s.length&&x.measureText(s+"…").width>w)s=s.slice(0,-1);return s+"…"};
   function table(X,Y,title,color,rows,rh,total,cols){
     x.fillStyle=color;x.fillRect(X,Y,colW,rh+6);x.fillStyle="#fff";x.font=F(700,Math.min(20,rh*.62));x.fillText(title,X+10,Y+(rh+6)/2);
     if(total!=null){x.textAlign="right";x.fillText(money(total),X+colW-10,Y+(rh+6)/2);x.textAlign="left"}
     Y+=rh+6;const nW=cols[0]*colW,aW=cols[1]*colW;
-    rows.forEach((r,i)=>{if(i%2){x.fillStyle="#F3F6F5";x.fillRect(X,Y,colW,rh)}x.strokeStyle="#D8E1DE";x.lineWidth=1;x.strokeRect(X+.5,Y+.5,colW-1,rh-1);
-      x.fillStyle="#13211D";x.font=F(600,Math.min(17,rh*.55));x.fillText(fitTxt(r[0],nW-14),X+8,Y+rh/2);
+    rows.forEach((r,i)=>{if(i%2){x.fillStyle="#FFF9E0";x.fillRect(X,Y,colW,rh)}x.strokeStyle="#F0E3AE";x.lineWidth=1;x.strokeRect(X+.5,Y+.5,colW-1,rh-1);
+      x.fillStyle="#2A2410";x.font=F(600,Math.min(17,rh*.55));x.fillText(fitTxt(r[0],nW-14),X+8,Y+rh/2);
       x.textAlign="right";x.font=F(600,Math.min(17,rh*.55));x.fillText(r[1]!=null&&r[1]!==""?money(r[1]):"",X+nW+aW-8,Y+rh/2);x.textAlign="left";
-      x.fillStyle="#5E716B";x.font=F(400,Math.min(14,rh*.46));x.fillText(fitTxt(r[2],colW-nW-aW-12),X+nW+aW+6,Y+rh/2);
+      x.fillStyle="#6F6647";x.font=F(400,Math.min(14,rh*.46));x.fillText(fitTxt(r[2],colW-nW-aW-12),X+nW+aW+6,Y+rh/2);
       Y+=rh});
     return Y;
   }
@@ -1007,7 +998,7 @@ async function makePdf(){
   const otherRows=OTHERG.map(g=>{const r=grp(g);return r.length?r:[["–",null,""]]});
   const leftCount=supRows.length+1+otherRows.reduce((s,r)=>s+r.length+1,0)+OTHERG.length*0.4;
   const lrh=Math.max(22,Math.min(36,avail/leftCount));
-  let y=table(lx,top,"ซัพพลายเออร์ (โอน)","#0B7A63",supRows,lrh,t.sup,[.42,.26]);
+  let y=table(lx,top,"ซัพพลายเออร์ (โอน)","#806000",supRows,lrh,t.sup,[.42,.26]);
   OTHERG.forEach((g,i)=>{y+=lrh*.4;y=table(lx,y,GROUPS[g].t,GROUPS[g].c,otherRows[i],lrh,t[g],[.42,.26])});
   // right: market, supply, cash box, totals
   const mk=grp("market"),sp=grp("supply");const rightCount=mk.length+sp.length+2+13.5+(t.mktX?1:0);
@@ -1016,7 +1007,7 @@ async function makePdf(){
   y=table(rx,y,"ค่าวัสดุสิ้นเปลือง","#5B4FC4",sp,rrh,t.supply,[.42,.26]);y+=rrh*.4;
   y=table(rx,y,"เงินสดที่จ่าย (ตลาด+วัสดุ"+(t.supC?"+ซัพสด":"")+(t.mktX?"+ใช้เงินตลาด":"")+")","#B4570B",[["รวมเงินสดที่จ่าย",t.cash,""],...(t.mktX?[["ในนี้ หมวดอื่นที่ใช้เงินตลาด",t.mktX,""]]:[]),["เงินตั้งต้น",t.opening,""],["เงินที่เหลือ",t.left,""],["เงินเกิน",t.diff!=null&&t.diff>0?t.diff:null,""],["เงินขาด",t.diff!=null&&t.diff<0?-t.diff:null,""]],rrh,null,[.42,.26]);y+=rrh*.6;
   // totals box
-  const bh=rrh*7.4;x.fillStyle="#0B7A63";x.fillRect(rx,y,colW,bh);x.fillStyle="#fff";
+  const bh=rrh*7.4;x.fillStyle="#806000";x.fillRect(rx,y,colW,bh);x.fillStyle="#fff";
   x.font=F(700,20);x.fillText("รวมค่าใช้จ่าย",rx+14,y+rrh*.8);
   const line=(k,v,yy,big)=>{x.font=F(big?700:500,big?24:17);x.fillText(k,rx+14,yy);x.textAlign="right";x.fillText(money(v),rx+colW-14,yy);x.textAlign="left"};
   line("1) รวมทุกอย่าง",t.all,y+rrh*1.9,true);
@@ -1025,7 +1016,7 @@ async function makePdf(){
   x.font=F(400,15);x.fillText("โอน "+money(t.coreT)+"  ·  เงินสด "+money(t.coreC),rx+14,y+rrh*4.65);
   x.strokeStyle="rgba(255,255,255,.5)";x.beginPath();x.moveTo(rx+14,y+rrh*5.3);x.lineTo(rx+colW-14,y+rrh*5.3);x.stroke();
   line("วัสดุอื่น+ส่วนตัว+สำนักงาน+ซ่อม+สวัสดิการ",r2(t.all-t.core),y+rrh*6.3,false);
-  x.fillStyle="#5E716B";x.font=F(400,14);x.fillText("สมุดจ่ายรายวัน",M,H-M/2);
+  x.fillStyle="#6F6647";x.font=F(400,14);x.fillText("สมุดจ่ายรายวัน",M,H-M/2);
   const blob=jpegPdf(c);
   const fname="ค่าใช้จ่าย-"+S.date+".pdf";
   if(DL){try{await DL.save({filename:fname,data:blob});toast("บันทึก PDF แล้ว");return}catch(e){if(e&&e.code==="declined")return}}
