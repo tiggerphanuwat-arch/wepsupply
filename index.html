@@ -748,6 +748,9 @@ let popCtx=null;
 function pop(html,mount){const r=document.getElementById("poproot");r.innerHTML='<div class="scrim" id="scrim"><div class="pop" role="dialog" aria-modal="true"><div class="grab"></div>'+html+'</div></div>';const s=document.getElementById("scrim");s.addEventListener("click",e=>{if(e.target===s)close()});mount&&mount(r.querySelector(".pop"))}
 function close(){popCtx=null;document.getElementById("poproot").innerHTML=""}
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!S.lock.locked)close()});
+const BANKS=["กสิกรไทย","กรุงไทย","กรุงเทพ","กรุงศรี","ไทยพาณิชย์"];
+/* ค่าที่เคยพิมพ์ไว้เองและไม่อยู่ในรายการ ยังเก็บไว้เป็นตัวเลือก */
+const bankSel=cur=>'<div class="fld"><label for="e-bank">ธนาคาร</label><select class="inp" id="e-bank"><option value="">เลือกธนาคาร</option>'+(cur&&!BANKS.includes(cur)?BANKS.concat(cur):BANKS).map(b=>'<option value="'+esc(b)+'"'+(b===cur?' selected':'')+'>'+esc(b)+'</option>').join("")+'</select></div>';
 function arm(b,label,fn){b.addEventListener("click",()=>{if(b.dataset.a)fn();else{b.dataset.a=1;const o=b.textContent;b.textContent=label;setTimeout(()=>{if(b.isConnected){delete b.dataset.a;b.textContent=o}},3000)}})}
 
 function payPop(staff,id){
@@ -763,9 +766,9 @@ function payPop(staff,id){
   const newBox=isNew?'<div class="banner" style="margin:0;display:grid;gap:8px"><b>'+(gOf(r)==="sup"?"ซัพใหม่":"รายการใหม่")+'จาก'+esc(who(r.staff))+'</b><span>ชื่อนี้ยังไม่อยู่ในรายชื่อ ถ้าไม่เพิ่ม จะใช้ได้แค่วันนี้วันเดียว</span><button class="btn primary sm" id="addnew">เพิ่ม “'+esc(r.name)+'” เข้ารายชื่อ</button></div>':'';
   const acc=d.account?'<div class="info"><div class="it"><div class="k">'+esc(d.bank||"เลขบัญชี")+(d.holder?' · '+esc(d.holder):'')+'</div><div class="v num">'+esc(d.account)+'</div><button class="cp" data-copy="'+esc(d.account.replace(/\D/g,"")||d.account)+'">คัดลอก</button></div></div>':'';
   pop('<h3>'+esc(r.name)+'</h3><div class="popsub">ส่งโดย '+esc(who(r.staff))+' · '+esc(thDs(r.date))+' '+hm(r.createdAt)+(r.note?' · '+esc(r.note):'')+'</div>'+newBox+
-    (paid?'<div class="payamt num">฿'+money(r.amount)+'</div><span class="pill good" style="justify-self:center">โอนแล้ว '+hm(r.paidAt)+'</span>'+acc+'<button class="btn sm" id="tocash" style="justify-self:center">เปลี่ยนเป็นจ่ายเงินสด</button><div class="acts"><button class="btn" id="undo">ยกเลิกสถานะโอน</button><button class="btn primary" id="x">ปิด</button></div>':
+    (paid?'<div class="payamt num">฿'+money(r.amount)+'</div><span class="pill good" style="justify-self:center">โอนแล้ว '+hm(r.paidAt)+'</span>'+acc+'<button class="btn sm" id="tocash" style="justify-self:center">เปลี่ยนเป็นจ่ายเงินสด</button><button class="btn sm danger" id="cancelreq" style="justify-self:center">ยกเลิกรายการโอน</button><div class="acts"><button class="btn" id="undo">ยกเลิกสถานะโอน</button><button class="btn primary" id="x">ปิด</button></div>':
      qr+acc+'<div class="fld"><label for="p-amt">ยอดที่จะโอน (แก้ได้ถ้าซัพแจ้งยอดใหม่)</label><input class="inp num" id="p-amt" inputmode="decimal" value="'+r.amount+'"></div>'+
-     '<button class="btn primary block sendbtn" id="done">โอนแล้ว</button>'+(isHold(r)?'<button class="btn sm" id="unhold" style="justify-self:center">เอาออกจากยังไม่โอน (โอนเลย)</button>':'<button class="btn sm" id="hold" style="justify-self:center">ยังไม่โอน · รอโอนวันที่ 3–5</button>')+'<button class="btn sm" id="tocash" style="justify-self:center">จ่ายเป็นเงินสดแทน</button><div class="acts"><button class="btn danger" id="rej">ส่งกลับ</button><button class="btn" id="x">ปิด</button></div>'),p=>{
+     '<button class="btn primary block sendbtn" id="done">โอนแล้ว</button>'+(isHold(r)?'<button class="btn sm" id="unhold" style="justify-self:center">เอาออกจากยังไม่โอน (โอนเลย)</button>':'<button class="btn sm" id="hold" style="justify-self:center">ยังไม่โอน · รอโอนวันที่ 3–5</button>')+'<button class="btn sm" id="tocash" style="justify-self:center">จ่ายเป็นเงินสดแทน</button><button class="btn sm danger" id="cancelreq" style="justify-self:center">ยกเลิกรายการโอน</button><div class="acts"><button class="btn danger" id="rej">ส่งกลับ</button><button class="btn" id="x">ปิด</button></div>'),p=>{
     p.querySelectorAll("[data-copy]").forEach(b=>b.addEventListener("click",()=>copy(b.dataset.copy,"คัดลอกเลขบัญชีแล้ว")));
     p.querySelector("#x").addEventListener("click",close);
     const pg=["sup","market","supply"].includes(gOf(r))?gOf(r):"sup";
@@ -779,6 +782,7 @@ function payPop(staff,id){
     const hd=p.querySelector("#hold");hd&&hd.addEventListener("click",()=>{close();store.updReq(staff,id,{hold:true}).then(()=>toast("ย้ายไป “ยังไม่โอน” แล้ว จะเตือนวันที่ 3")).catch(fail)});
     const uh=p.querySelector("#unhold");uh&&uh.addEventListener("click",()=>{close();store.updReq(staff,id,{hold:false}).then(()=>toast("ย้ายกลับไปรอโอนแล้ว")).catch(fail)});
     const rj=p.querySelector("#rej");rj&&rj.addEventListener("click",()=>rejectPop(staff,id));
+    const cr=p.querySelector("#cancelreq");cr&&arm(cr,"กดอีกครั้งเพื่อยกเลิกรายการนี้",()=>{close();store.updReq(staff,id,{status:"cancelled",paidAt:null,cancelledAt:Date.now()}).then(()=>toast("ยกเลิกรายการโอนแล้ว")).catch(fail)});
     const ud=p.querySelector("#undo");ud&&arm(ud,"กดอีกครั้งเพื่อยืนยัน",()=>{close();store.updReq(staff,id,{status:"pending",paidAt:null}).catch(fail)});
   });
 }
@@ -862,7 +866,7 @@ function editPop(id,preset,after){
     '<div class="fld"><span class="lbl">อยู่ในกลุ่ม</span><div class="seg">'+["sup","market","supply"].map(k=>'<button type="button" data-g="'+k+'" aria-pressed="'+(k===g)+'">'+GROUPS[k].t+'</button>').join("")+'</div></div>'+
     '<div class="g2">'+f("contact","ชื่อผู้ติดต่อ",d.contact)+f("phone","เบอร์โทร",d.phone,{im:"tel",num:1})+'</div>'+f("line","LINE",d.line,{ph:"LINE ID หรือชื่อกลุ่ม"})+
     f("promptpay","พร้อมเพย์ (เบอร์มือถือหรือเลขบัตร 13 หลัก)",d.promptpay,{im:"numeric",num:1,ph:"ใช้สร้าง QR ตอนโอน"})+
-    '<div class="g2">'+f("bank","ธนาคาร",d.bank,{ph:"เช่น กสิกรไทย"})+f("account","เลขบัญชี",d.account,{im:"numeric",num:1})+'</div>'+f("holder","ชื่อบัญชี",d.holder)+f("note","หมายเหตุ",d.note)+(g==="sup"||!id?'<div class="fld" id="e-h35">'+chk("h35",d.hold35,"รอโอนวันที่ 3–5 ของเดือนถัดไป","ยอดใหม่ของเจ้านี้จะเข้า “ยังไม่โอน” และเตือนวันที่ 3"):'')+
+    '<div class="g2">'+bankSel(d.bank)+f("account","เลขบัญชี",d.account,{im:"numeric",num:1})+'</div>'+f("holder","ชื่อบัญชี",d.holder)+f("note","หมายเหตุ",d.note)+(g==="sup"||!id?'<div class="fld" id="e-h35">'+chk("h35",d.hold35,"รอโอนวันที่ 3–5 ของเดือนถัดไป","ยอดใหม่ของเจ้านี้จะเข้า “ยังไม่โอน” และเตือนวันที่ 3"):'')+
     '<div style="font-size:12px;color:var(--muted)">ห้ามใส่รหัสผ่านธนาคารในแอปนี้ · พนักงานเห็นแค่ชื่อ ไม่เห็นเบอร์หรือบัญชี</div><div class="acts">'+(id?'<button class="btn danger" id="del">ลบ</button>':'<button class="btn" id="x">ยกเลิก</button>')+'<button class="btn primary" id="sv">บันทึก</button></div>',p=>{
     const v=k=>p.querySelector("#e-"+k).value.trim();
     p.querySelectorAll(".seg button").forEach(b=>b.addEventListener("click",()=>{g=b.dataset.g;p.querySelectorAll(".seg button").forEach(x=>x.setAttribute("aria-pressed",String(x===b)))}));
