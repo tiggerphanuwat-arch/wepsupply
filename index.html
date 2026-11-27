@@ -559,7 +559,9 @@ function buildNav(){
   document.querySelectorAll("[data-tab]").forEach(b=>b.addEventListener("click",()=>setTab(b.dataset.tab)));
 }
 document.getElementById("gear").addEventListener("click",()=>settingsPop());
-document.getElementById("logout").addEventListener("click",()=>{if(confirm("ออกจากระบบ?"))logout()});
+document.getElementById("logout").addEventListener("click",()=>pop('<h3>ออกจากระบบ?</h3><div>ครั้งต่อไปต้องใส่รหัสผ่านหรือ PIN ใหม่ · ข้อมูลในร้านไม่หาย</div><div class="acts"><button class="btn" id="x">ยกเลิก</button><button class="btn primary" id="outok">ออกจากระบบ</button></div>',p=>{
+  p.querySelector("#x").addEventListener("click",close);
+  p.querySelector("#outok").addEventListener("click",e=>{e.currentTarget.disabled=true;e.currentTarget.textContent="กำลังออก…";logout()})}));
 function setTab(t){S.tab=t;try{localStorage.setItem("sj3_tab",t)}catch(e){}if(t==="day"&&S.date.slice(0,7)!==S.month){S.month=S.date.slice(0,7);subMonth()}render();window.scrollTo(0,0)}
 
 /* calc */
@@ -1269,7 +1271,7 @@ const SB=(()=>{
     async session(){try{return(await cl.auth.getSession()).data.session}catch(e){return null}},
     async profile(id){try{const{data}=await cl.from("profiles").select("name,role").eq("id",id).maybeSingle();return data}catch(e){return null}}};
 })();
-async function logout(){try{if(SB)await SB.cl.auth.signOut()}catch(e){}location.hash="";location.reload()}
+async function logout(){try{if(SB)await Promise.race([SB.cl.auth.signOut({scope:"local"}),new Promise(r=>setTimeout(r,4000))])}catch(e){}try{localStorage.removeItem("sahai-auth")}catch(e){}location.hash="";location.reload()}
 /* ---- หน้าล็อกอิน ---- */
 const LG={tab:location.hash==="#owner"?"owner":"staff",reg:false,busy:false,msg:"",name:"",pin:"",code:"",email:"",pw:""};
 const normName=s=>(s||"").normalize("NFC").trim().replace(/\s+/g," ").toLowerCase();
