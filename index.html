@@ -327,6 +327,10 @@ const hasList=g=>g==="sup"||!!GROUPS[g].named;            // หมวดที�
 const chk=(act,on,label,sub)=>'<button type="button" class="chkrow" data-act="'+act+'" aria-pressed="'+(!!on)+'"><i>✓</i><span>'+label+(sub?'<small>'+sub+'</small>':'')+'</span></button>';
 const MKT_L="ใช้เงินตลาดจ่าย",MKT_S="นับรวมในช่อง “รวมค่าใช้จ่ายของตลาด” (เงินในลิ้นชักลดลงด้วย)";
 const PAYL={transfer:"โอนจ่าย",cash:"เงินสด"};
+/* เงินในเก๊ะ: เงินอีกก้อน ใช้กับของตลาด แยกออกจากทุกยอดรวม (ตลาด เงินสด โอน รวมทั้งหมด) แสดงยอดของตัวเองต่างหาก */
+const TILL_L="ใช้เงินในเก๊ะ",TILL_S="แยกยอดไว้ต่างหาก ไม่รวมกับเงินตลาด เงินสด หรือเงินโอน";
+const isTill=(g,p,x)=>!!(x&&x.till)&&g==="market"&&p==="cash";
+const cashName=x=>x&&x.till?"เงินในเก๊ะ":"เงินสด";
 const payBtns=(act,cur,three)=>{const o=three?[["transfer","โอน","รอเจ้าของโอนให้"],["done","โอนจ่าย","โอนจ่ายไปแล้ว"],["cash","เงินสด","จ่ายแล้ว"]]:[["transfer","โอนจ่าย","จ่ายด้วยการโอน"],["cash","เงินสด","จ่ายด้วยเงินสด"]];
   return '<div class="paypick'+(three?' p3':'')+'">'+o.map(([v,l,sm])=>'<button type="button" data-act="'+act+'" data-p="'+v+'" aria-pressed="'+(cur===v)+'">'+l+'<small>'+sm+'</small></button>').join("")+'</div>'};
 const reqBody=(pm,b)=>Object.assign(b,{kind:pm==="cash"?"cash":"transfer",status:pm==="cash"?"recorded":pm==="done"?"paid":"pending"},pm==="done"?{paidAt:Date.now(),selfPaid:true}:{});
@@ -391,7 +395,7 @@ function qrSvg(text){try{if(typeof qrcode!=="function")return null;const q=qrcod
 /* state */
 const S={edits:[],editsToday:[],role:null,isOwner:false,tab:"inbox",date:today(),month:today().slice(0,7),dir:[],names:[],day:null,mdays:[],reqs:{},mode:"loading",q:"",openNotes:{},dirLoaded:false,me:null,people:{},
   lock:{enabled:false,staffHash:null,salt:null,ownerHash:null,locked:false,entry:"",fails:0,until:0,loaded:false},
-  staff:{group:"sup",pay:"transfer",mkt:false,split:false,amt2:"",stT:"done",sel:null,q:"",sort:"order",amt:"",note:"",newName:"",mine:[]}};
+  staff:{group:"sup",pay:"transfer",mkt:false,till:false,split:false,amt2:"",stT:"done",sel:null,q:"",sort:"order",amt:"",note:"",newName:"",mine:[]}};
 try{const t=localStorage.getItem("sj3_tab");if(TABS.some(x=>x[0]===t))S.tab=t;const so=localStorage.getItem("sj3_sort");if(so==="az"||so==="order")S.staff.sort=so}catch(e){}
 
 /* store */
@@ -400,7 +404,7 @@ const Q=(k,f)=>(qs[k]=(qs[k]||Promise.resolve()).catch(()=>{}).then(f));
 /* ประวัติการแก้ไขข้อมูลย้อนหลัง: เก็บว่าใครแก้อะไร เมื่อไร จากค่าเดิมเป็นค่าใหม่ (แอปไม่มีปุ่มลบประวัติ) */
 const showAmt=v=>v==null||v===""?"ว่าง":money(v);
 const payName=v=>v==="cash"?"เงินสด":v==="transfer"?"โอน":"ว่าง";
-const FIELD={amount:["ยอด",showAmt],name:["ชื่อ",v=>v||"ว่าง"],note:["หมายเหตุ",v=>v||"ว่าง"],group:["หมวด",v=>(GROUPS[v]||{}).t||"ว่าง"],pay:["วิธีจ่าย",payName],kind:["วิธีจ่าย",payName],mkt:["ใช้เงินตลาด",v=>v?"ใช่":"ไม่ใช่"]};
+const FIELD={amount:["ยอด",showAmt],name:["ชื่อ",v=>v||"ว่าง"],note:["หมายเหตุ",v=>v||"ว่าง"],group:["หมวด",v=>(GROUPS[v]||{}).t||"ว่าง"],pay:["วิธีจ่าย",payName],kind:["วิธีจ่าย",payName],mkt:["ใช้เงินตลาด",v=>v?"ใช่":"ไม่ใช่"],till:["ใช้เงินในเก๊ะ",v=>v?"ใช่":"ไม่ใช่"]};
 const diffFields=(old,patch)=>Object.keys(FIELD).filter(k=>k in patch&&(patch[k]||"")!==(old[k]||"")).map(k=>FIELD[k][0]+" "+FIELD[k][1](old[k])+" → "+FIELD[k][1](patch[k]));
 function reqChanges(old,patch){
   const out=diffFields(Object.assign({},old,{kind:payR(old)}),patch);
@@ -621,10 +625,10 @@ function reqsAll(date){const out=[];for(const k in S.reqs)S.reqs[k].forEach(r=>{
 const reqsG=(date,g)=>reqsAll(date).filter(r=>gOf(r)===g);
 const CORE_NAMES=["ค่าวิน"];const coreByName=(g,n)=>g==="supply"&&CORE_NAMES.includes((n||"").trim());
 function totals(day,date){
-  const E=(day&&day.entries)||{};const t={sup:0,supPaid:0,supPend:0,payT:0,payC:0,coreT:0,coreC:0,drawer:0,supC:0,mktX:0,win:0};CASHG.forEach(g=>t[g]=0);
+  const E=(day&&day.entries)||{};const t={sup:0,supPaid:0,supPend:0,payT:0,payC:0,coreT:0,coreC:0,drawer:0,supC:0,mktX:0,win:0,till:0};CASHG.forEach(g=>t[g]=0);
   const add=(g,a,p,nm)=>{t[g]+=a;if(p==="transfer")t.payT+=a;else t.payC+=a;const cn=coreByName(g,nm);if(cn)t.win+=a;if(GROUPS[g].core||cn){if(p==="transfer")t.coreT+=a;else t.coreC+=a}if(p==="cash"&&(g==="sup"||g==="market"||g==="supply"))t.drawer+=a;if(p==="cash"&&g==="sup")t.supC+=a};
-  for(const id in E){const e=E[id];if(!e||e.deleted||e.amount==null||t[e.group]==null||e.group==="sup")continue;add(e.group,e.amount,payE(e),e.name);if(e.mkt&&OTHERG.includes(e.group)&&payE(e)==="cash")t.mktX+=e.amount}
-  reqsAll(date).forEach(r=>{const g=gOf(r),a=r.amount||0,p=payR(r);add(g,a,p,r.name);if(r.mkt&&OTHERG.includes(g)&&p==="cash")t.mktX+=a;if(g==="sup"&&p==="transfer"){if(r.status==="paid")t.supPaid+=a;else t.supPend+=a}});
+  for(const id in E){const e=E[id];if(!e||e.deleted||e.amount==null||t[e.group]==null||e.group==="sup")continue;if(isTill(e.group,payE(e),e)){t.till+=e.amount;continue}add(e.group,e.amount,payE(e),e.name);if(e.mkt&&OTHERG.includes(e.group)&&payE(e)==="cash")t.mktX+=e.amount}
+  reqsAll(date).forEach(r=>{const g=gOf(r),a=r.amount||0,p=payR(r);if(isTill(g,p,r)){t.till+=a;return}add(g,a,p,r.name);if(r.mkt&&OTHERG.includes(g)&&p==="cash")t.mktX+=a;if(g==="sup"&&p==="transfer"){if(r.status==="paid")t.supPaid+=a;else t.supPend+=a}});
   for(const k in t)t[k]=r2(t[k]);
   t.cash=r2(t.drawer+t.mktX);t.core=r2(t.sup+t.market+t.win);t.other=r2(OTHERG.reduce((s,g)=>s+t[g],0));t.all=r2(t.sup+t.market+t.supply+t.other);
   const c=(day&&day.cash)||{};t.opening=c.opening;t.left=c.left;
@@ -648,7 +652,8 @@ function render(){
   const st=document.getElementById("stickyroot");
   if(S.role==="owner"&&S.tab==="day"){const t=totals(S.day,S.date);st.innerHTML='<div class="sticky"><div class="pair"><div><div class="k">รวมทุกอย่าง</div><div class="v num">฿'+money(t.all)+'</div></div><div><div class="k">ค่าใช้จ่ายร้าน</div><div class="v num">฿'+money(t.core)+'</div></div></div><button class="btn primary sm" data-act="pdf">'+IC.pdf+'PDF</button></div>'}else st.innerHTML="";
 }
-function statusPill(r){if(asked(r))return '<span class="pill warn">ขอยกเลิก · รออนุมัติ</span>';
+function statusPill(r){if(r.till&&payR(r)==="cash"&&!asked(r))return '<span class="pill info">เงินในเก๊ะ</span>';
+  if(asked(r))return '<span class="pill warn">ขอยกเลิก · รออนุมัติ</span>';
   if(payR(r)==="cash")return '<span class="pill info">เงินสด · '+esc(GROUPS[gOf(r)].t)+'</span>';
   return r.status==="paid"?'<span class="pill good">โอนแล้ว '+hm(r.paidAt)+'</span>':r.status==="rejected"?'<span class="pill bad">ส่งกลับ</span>':r.status==="cancelled"?'<span class="pill bad">ยกเลิก</span>':isHold(r)?'<span class="pill warn">ยังไม่โอน</span>':'<span class="pill warn">รอโอน</span>'}
 
@@ -678,7 +683,7 @@ function vStaff(){
   h+='<div class="step"><h2><i>2</i>'+(isSup?"เลือกซัพ":hasList(g)?"เลือกรายการ":"ซื้ออะไร")+'</h2>'+
     (hasList(g)?pickerHTML({names:S.names.filter(n=>n.group===g),sel:st.sel,q:st.q,sort:st.sort,newToday,newLabel:isSup?"ซัพใหม่ ที่ไม่มีในรายชื่อ":"รายการอื่น",idp:"s"}):
       (st.sel?pickerHTML({sel:st.sel,idp:"s"}):'<input class="inp" id="s-free" placeholder="เช่น ค่าซ่อมแอร์ ค่าน้ำดื่มพนักงาน" value="'+esc(st.newName)+'">'))+'</div>';
-  h+='<div class="step"><h2><i>3</i>จ่ายด้วยอะไร</h2>'+(st.split?'':payBtns("spay",st.pay,true))+chk("ssplit",st.split,"แบ่งจ่าย: เงินสดส่วนหนึ่ง + โอนส่วนหนึ่ง","เช่น เงินสด 3,000 และโอน 199.89")+(OTHERG.includes(g)&&(st.pay==="cash"||st.split)?'<div style="margin-top:2px">'+chk("smkt",st.mkt,MKT_L,st.split?"ส่วนที่เป็นเงินสดใช้เงินของตลาดจ่าย":"เลือกถ้าเอาเงินของตลาดมาจ่าย")+'</div>':'')+'</div>';
+  h+='<div class="step"><h2><i>3</i>จ่ายด้วยอะไร</h2>'+(st.split?'':payBtns("spay",st.pay,true))+chk("ssplit",st.split,"แบ่งจ่าย: เงินสดส่วนหนึ่ง + โอนส่วนหนึ่ง","เช่น เงินสด 3,000 และโอน 199.89")+(OTHERG.includes(g)&&(st.pay==="cash"||st.split)?'<div style="margin-top:2px">'+chk("smkt",st.mkt,MKT_L,st.split?"ส่วนที่เป็นเงินสดใช้เงินของตลาดจ่าย":"เลือกถ้าเอาเงินของตลาดมาจ่าย")+'</div>':'')+(st.group==="market"&&(st.pay==="cash"||st.split)?'<div style="margin-top:2px">'+chk("still",st.till,TILL_L,st.split?"ส่วนที่เป็นเงินสดใช้เงินในเก๊ะ":TILL_S)+'</div>':'')+'</div>';
   h+='<div class="step"><h2><i>4</i>ใส่ยอด'+(isSup&&st.pay==="transfer"&&!st.split?"ตามบิล":"")+'</h2>'+(st.split?'<div class="fld"><label for="s-amt">เงินสด (บาท)</label><input class="inp bigamt num" id="s-amt" inputmode="decimal" placeholder="0.00" value="'+esc(st.amt)+'"></div><div class="fld"><label for="s-amt2">โอน (บาท)</label><input class="inp bigamt num" id="s-amt2" inputmode="decimal" placeholder="0.00" value="'+esc(st.amt2)+'"></div><div class="fld"><span class="lbl">ส่วนที่โอน</span><div class="paypick"><button type="button" data-act="sst" data-p="done" aria-pressed="'+(st.stT==="done")+'">โอนจ่ายแล้ว<small>โอนไปแล้ว</small></button><button type="button" data-act="sst" data-p="transfer" aria-pressed="'+(st.stT==="transfer")+'">รอโอน<small>รอเจ้าของโอนให้</small></button></div></div>':'<input class="inp bigamt num" id="s-amt" inputmode="decimal" placeholder="0.00" value="'+esc(st.amt)+'">')+'<input class="inp" id="s-note" placeholder="หมายเหตุ (ถ้ามี)" value="'+esc(st.note)+'"></div>';
   h+='<button class="btn primary block sendbtn" data-act="send">'+(st.split?"บันทึกแบ่งจ่าย (เงินสด + โอน)":payTxt[st.pay][0])+'</button>';
   const mine=st.mine.filter(r=>!r.deleted).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
@@ -707,7 +712,7 @@ function vInbox(){
 /* ---- owner: daily sheet ---- */
 function rowHTML(g,id,name,e,isExtra){
   const amt=e&&e.amount!=null?e.amount:"";const note=e&&e.note||"";const open=S.openNotes[id]||note;const pm=e?payE(Object.assign({group:g},e)):defPay(g);
-  return '<div class="r"><div class="who"><button class="nm" data-act="'+(isExtra?"extra":"info")+'" data-id="'+id+'" data-g="'+g+'">'+esc(name)+'</button><button class="paytog'+(pm==="transfer"?" t":"")+'" data-act="paytog" data-id="'+id+'" data-g="'+g+'" data-name="'+esc(name)+'" data-p="'+pm+'" aria-label="วิธีจ่าย '+esc(name)+' ตอนนี้'+PAYL[pm]+' แตะเพื่อสลับ">'+PAYL[pm]+'</button>'+(OTHERG.includes(g)&&pm==="cash"?'<button class="paytog mk" data-act="mkttog" data-id="'+id+'" data-g="'+g+'" data-name="'+esc(name)+'" data-v="'+(e&&e.mkt?1:0)+'" aria-pressed="'+(!!(e&&e.mkt))+'" title="'+MKT_S+'">ใช้เงินตลาด</button>':'')+(open?'':'<button class="notebtn" data-act="note" data-id="'+id+'" aria-label="เพิ่มหมายเหตุ" title="เพิ่มหมายเหตุ">'+IC.pen+'</button>')+'</div>'+
+  return '<div class="r"><div class="who"><button class="nm" data-act="'+(isExtra?"extra":"info")+'" data-id="'+id+'" data-g="'+g+'">'+esc(name)+'</button><button class="paytog'+(pm==="transfer"?" t":"")+'" data-act="paytog" data-id="'+id+'" data-g="'+g+'" data-name="'+esc(name)+'" data-p="'+pm+'" aria-label="วิธีจ่าย '+esc(name)+' ตอนนี้'+PAYL[pm]+' แตะเพื่อสลับ">'+PAYL[pm]+'</button>'+(OTHERG.includes(g)&&pm==="cash"?'<button class="paytog mk" data-act="mkttog" data-id="'+id+'" data-g="'+g+'" data-name="'+esc(name)+'" data-v="'+(e&&e.mkt?1:0)+'" aria-pressed="'+(!!(e&&e.mkt))+'" title="'+MKT_S+'">ใช้เงินตลาด</button>':'')+(g==="market"?'<button class="paytog mk" data-act="tilltog" data-id="'+id+'" data-g="'+g+'" data-name="'+esc(name)+'" data-v="'+(e&&e.till?1:0)+'" aria-pressed="'+(!!(e&&e.till))+'" title="'+TILL_S+'">เงินในเก๊ะ</button>':'')+(open?'':'<button class="notebtn" data-act="note" data-id="'+id+'" aria-label="เพิ่มหมายเหตุ" title="เพิ่มหมายเหตุ">'+IC.pen+'</button>')+'</div>'+
     '<input class="amt num'+(amt!==""?" filled":"")+'" id="a-'+id+'" data-id="'+id+'" data-g="'+g+'" data-name="'+esc(name)+'" inputmode="decimal" enterkeyhint="next" placeholder="0" value="'+amt+'" aria-label="ราคา '+esc(name)+'">'+
     (open?'<div class="note"><input id="n-'+id+'" data-id="'+id+'" data-g="'+g+'" data-name="'+esc(name)+'" placeholder="หมายเหตุ" value="'+esc(note)+'"></div>':'')+'</div>';
 }
@@ -716,7 +721,7 @@ function groupBySp(rs){const out=[],m={};rs.forEach(r=>{if(r.sp){if(!m[r.sp]){m[
 const spSum=ps=>r2(ps.reduce((s,r)=>s+(r.amount||0),0));
 const isReqObj=r=>("kind" in r);
 const partPay=r=>isReqObj(r)?payR(r):payE(r);
-const spLabel=ps=>ps.map(r=>partPay(r)==="cash"?"เงินสด "+money0(r.amount):((isReqObj(r)&&r.status!=="paid")?"รอโอน ":"โอนจ่าย ")+money0(r.amount)).join(" + ");
+const spLabel=ps=>ps.map(r=>partPay(r)==="cash"?cashName(r)+" "+money0(r.amount):((isReqObj(r)&&r.status!=="paid")?"รอโอน ":"โอนจ่าย ")+money0(r.amount)).join(" + ");
 function splitRowHTML(ps,act){const r=ps[0];
   return '<div class="req click" data-act="'+act+'" data-sp="'+r.sp+'" data-g="'+gOf(r)+'"><div class="nm">'+esc(r.name)+(isReqObj(r)?' <span class="tag">'+esc(who(r.staff))+'</span>':'')+' <span class="pill info">แบ่งจ่าย</span></div><div class="amtv num">'+money(spSum(ps))+'</div><div class="meta">'+spLabel(ps)+(r.note?' · '+esc(r.note):'')+'</div></div>'}
 function extraRows(g,extras){const seen=new Set();return extras.map(([id,e])=>{if(e.sp){const ps=extras.filter(([i2,e2])=>e2.sp===e.sp);if(ps.length>1){if(seen.has(e.sp))return "";seen.add(e.sp);return splitRowHTML(ps.map(([i2,e2])=>Object.assign({id:i2},e2)),"splitent")}}return rowHTML(g,id,e.name,e,true)}).join("")}
@@ -764,7 +769,7 @@ function splitEntPop(sp){
 function mergedRow(g,d,rs){
   return '<div class="r"><div class="who"><button class="nm" data-act="info" data-id="'+d.id+'" data-g="'+g+'">'+esc(d.name)+'</button></div><div class="samts">'+groupBySp(rs).map(it=>{if(it.parts.length>1){const ps=it.parts;return '<button class="samt" data-act="splitreq" data-sp="'+ps[0].sp+'"><span class="num">'+money(spSum(ps))+'</span><small>ใส่แล้ว · '+esc(who(ps[0].staff))+' · แบ่งจ่าย '+spLabel(ps)+'</small></button>'}const r=it.parts[0];const tr=payR(r)==="transfer";
     return '<button class="samt" data-act="'+(tr?"pay":"staffcash")+'" data-staff="'+r.staff+'" data-id="'+r.id+'" aria-label="'+esc(d.name)+' ใส่แล้ว '+money(r.amount)+' บาท แตะเพื่อดูหรือแก้ไข"><span class="num">'+money(r.amount)+'</span><small>ใส่แล้ว · '+esc(who(r.staff))+' · '+(tr?(r.status==="paid"?"โอนแล้ว":"รอโอน"):"เงินสด")+(r.note?' · '+esc(r.note):'')+'</small></button>'}).join("")+'</div></div>'}
-function staffRows(g,skip){return groupBySp(reqsG(S.date,g).filter(r=>!(skip&&skip.has(r.id)))).map(it=>{if(it.parts.length>1)return splitRowHTML(it.parts,"splitreq");const r=it.parts[0];const tr=payR(r)==="transfer";return '<div class="req click" data-act="'+(tr?"pay":"staffcash")+'" data-staff="'+r.staff+'" data-id="'+r.id+'"><div class="nm">'+esc(r.name)+' <span class="tag">'+esc(who(r.staff))+'</span></div><div class="amtv num" style="font-size:16px">'+money(r.amount)+'</div>'+(r.note?'<div class="meta">'+esc(r.note)+'</div>':'')+(tr?statusPill(r):'<span class="pill info">เงินสด'+(r.mkt?' · ใช้เงินตลาด':'')+'</span>')+'</div>'}).join("")}
+function staffRows(g,skip){return groupBySp(reqsG(S.date,g).filter(r=>!(skip&&skip.has(r.id)))).map(it=>{if(it.parts.length>1)return splitRowHTML(it.parts,"splitreq");const r=it.parts[0];const tr=payR(r)==="transfer";return '<div class="req click" data-act="'+(tr?"pay":"staffcash")+'" data-staff="'+r.staff+'" data-id="'+r.id+'"><div class="nm">'+esc(r.name)+' <span class="tag">'+esc(who(r.staff))+'</span></div><div class="amtv num" style="font-size:16px">'+money(r.amount)+'</div>'+(r.note?'<div class="meta">'+esc(r.note)+'</div>':'')+(tr?statusPill(r):'<span class="pill info">'+cashName(r)+(r.mkt?' · ใช้เงินตลาด':'')+'</span>')+'</div>'}).join("")}
 function cashSec(g,t){
   const E=(S.day&&S.day.entries)||{};const list=GROUPS[g].named?dirBy(g):[];
   const extras=Object.entries(E).filter(([id,e])=>e&&!e.deleted&&e.group===g&&id.startsWith("x_"));
@@ -786,6 +791,7 @@ function vDay(){
     '<button class="addrow" data-act="ownadd">+ ใส่ยอดเอง</button></div>'+cashSec("market",t)+cashSec("supply",t);
   h+='<div class="sec g-market"><div class="sec-h"><div><h2>รวมค่าใช้จ่ายของตลาด</h2><div class="sub">เงินสดที่จ่าย: ตลาด + วัสดุ'+(t.supC?' + ซัพที่จ่ายสด '+money0(t.supC):'')+(t.mktX?' + หมวดอื่นที่ใช้เงินตลาด '+money0(t.mktX):'')+'</div></div><div class="tot num">'+money(t.cash)+'</div></div><div class="cashbox">'+
     '<div class="g2"><div class="fld"><label for="c-open">เงินตั้งต้น</label><input class="inp num" id="c-open" inputmode="decimal" placeholder="0" value="'+(t.opening!=null?t.opening:"")+'"></div><div class="fld"><label for="c-left">เงินที่เหลือ (นับจริง)</label><input class="inp num" id="c-left" inputmode="decimal" placeholder="0" value="'+(t.left!=null?t.left:"")+'"></div></div>'+
+    (t.till?'<div class="line"><span><b>เงินในเก๊ะ</b> (ไม่รวมในยอดอื่น)</span><span class="num"><b>'+money(t.till)+'</b></span></div>':'')+
     (t.mktX?'<div class="line"><span>ตลาด + วัสดุ'+(t.supC?' + ซัพสด':'')+'</span><span class="num">'+money(t.drawer)+'</span></div><div class="line"><span>หมวดอื่นที่ใช้เงินตลาด</span><span class="num">'+money(t.mktX)+'</span></div>':'')+
     '<div class="line"><span>ควรเหลือ</span><span class="num">'+(t.expect!=null?money(t.expect):"–")+'</span></div>'+
     '<div class="ovr"><div class="over"><div class="k">เงินเกิน</div><div class="v num">'+(t.diff!=null&&t.diff>0?money(t.diff):"–")+'</div></div><div class="short"><div class="k">เงินขาด</div><div class="v num">'+(t.diff!=null&&t.diff<0?money(-t.diff):"–")+'</div></div></div>'+(t.diff===0?'<span class="pill good" style="justify-self:start">เงินสดตรงพอดี</span>':'')+'</div></div></div><div class="colstack">'+OTHERG.map(g=>cashSec(g,t)).join("");
@@ -814,14 +820,15 @@ function monthAgg(){
   const per={};const by={};const tot={payT:0,payC:0,coreT:0,coreC:0,win:0};["sup",...CASHG].forEach(g=>tot[g]=0);
   const dates=new Set(S.mdays.map(d=>d.date));for(const k in S.reqs)S.reqs[k].forEach(r=>{if(r.date&&r.date.slice(0,7)===S.month)dates.add(r.date)});
   const add=(g,n,a,c1)=>{const k=g+"|"+n;(by[k]||(by[k]={g,n,a:0,c:0})).a+=a;if(c1!==false)by[k].c++};
-  dates.forEach(date=>{const day=S.mdays.find(d=>d.date===date);const t=totals(day,date);per[date]=t;["sup",...CASHG,"payT","payC","coreT","coreC","win"].forEach(g=>tot[g]+=t[g]);
-    const E=(day&&day.entries)||{};for(const id in E){const e=E[id];if(!e||e.deleted||e.amount==null||e.group==="sup")continue;add(e.group,e.name,e.amount)}
-    {const seen=new Set();reqsAll(date).forEach(r=>{const first=!(r.sp&&seen.has(r.sp));if(r.sp)seen.add(r.sp);add(gOf(r),r.name,r.amount||0,first)})}});
+  dates.forEach(date=>{const day=S.mdays.find(d=>d.date===date);const t=totals(day,date);per[date]=t;["sup",...CASHG,"payT","payC","coreT","coreC","win"].forEach(g=>tot[g]+=t[g]);tot.till=(tot.till||0)+t.till;
+    const E=(day&&day.entries)||{};for(const id in E){const e=E[id];if(!e||e.deleted||e.amount==null||e.group==="sup"||isTill(e.group,payE(e),e))continue;add(e.group,e.name,e.amount)}
+    {const seen=new Set();reqsAll(date).forEach(r=>{if(isTill(gOf(r),payR(r),r))return;const first=!(r.sp&&seen.has(r.sp));if(r.sp)seen.add(r.sp);add(gOf(r),r.name,r.amount||0,first)})}});
   const cs={short:0,over:0,nShort:0,nOver:0,nOk:0,days:[]};Object.keys(per).sort().forEach(d=>{const df=per[d].diff;if(df==null)return;if(df<0){cs.short+=-df;cs.nShort++;cs.days.push({d,df})}else if(df>0){cs.over+=df;cs.nOver++;cs.days.push({d,df})}else cs.nOk++});cs.short=r2(cs.short);cs.over=r2(cs.over);cs.counted=cs.nShort+cs.nOver+cs.nOk;cs.net=r2(cs.over-cs.short);
   for(const k in tot)tot[k]=r2(tot[k]);
   tot.core=r2(tot.sup+tot.market+tot.win);tot.other=r2(OTHERG.reduce((s,g)=>s+tot[g],0));tot.all=r2(tot.sup+tot.market+tot.supply+tot.other);
   return {per,by,tot,cs};
 }
+const tillSumHTML=v=>v?'<div class="sec" style="margin-bottom:14px"><div class="sec-h"><div><h2>เงินในเก๊ะ</h2><div class="sub">แยกต่างหาก ไม่รวมในยอดอื่น · ทั้งเดือน</div></div><div class="tot num">'+money(v)+'</div></div></div>':'';
 function cashSumHTML(cs){
   const net=cs.net===0?'<span class="pill good">สุทธิ ตรงพอดี</span>':cs.net<0?'<span class="pill bad">สุทธิ หาย '+money(-cs.net)+'</span>':'<span class="pill info">สุทธิ เกิน '+money(cs.net)+'</span>';
   if(!cs.counted)return '<div class="sec" style="margin-bottom:14px"><div class="sec-h"><div><h2>เงินหาย / เงินเกินรวม</h2><div class="sub">จากการนับเงินสดปิดวัน</div></div></div><div class="empty">ยังไม่มีวันที่นับเงินสดในเดือนนี้<br>กรอก “เงินตั้งต้น” และ “เงินที่เหลือ (นับจริง)” ในหน้ารายวัน แล้วยอดจะมารวมที่นี่</div></div>';
@@ -832,7 +839,7 @@ function vSum(){
   const {per,by,tot,cs}=monthAgg();
   let h='<div class="datebar"><button class="iconbtn" data-act="mprev" aria-label="เดือนก่อน">'+IC.prev+'</button><div class="datelabel">'+esc(thM(S.month))+'</div><button class="iconbtn" data-act="mnext" aria-label="เดือนถัดไป">'+IC.next+'</button></div>';
   h+='<div class="kpis"><div class="kpi t"><div class="k">1) รวมทุกอย่าง</div><div class="v num">'+money(tot.all)+'</div></div><div class="kpi t"><div class="k">2) ค่าใช้จ่ายร้าน (ซัพ + ตลาด + ค่าวิน)</div><div class="v num">'+money(tot.core)+'</div><div class="k" style="margin-top:2px">โอน '+money0(tot.coreT)+' · เงินสด '+money0(tot.coreC)+'</div></div><div class="kpi"><div class="k">จ่ายโดยโอน (ทุกหมวด)</div><div class="v num">'+money(tot.payT)+'</div></div><div class="kpi"><div class="k">จ่ายเงินสด (ทุกหมวด)</div><div class="v num">'+money(tot.payC)+'</div></div></div>';
-  h+=cashSumHTML(cs)+'<div class="cols"><div class="colstack">';
+  h+=tillSumHTML(r2(tot.till||0))+cashSumHTML(cs)+'<div class="cols"><div class="colstack">';
   const[y,m]=S.month.split("-").map(Number);const dim=new Date(y,m,0).getDate();let mx=0;for(let i=1;i<=dim;i++){const t=per[S.month+"-"+pad(i)];if(t)mx=Math.max(mx,t.all)}
   let bars="",ax="";for(let i=1;i<=dim;i++){const k=S.month+"-"+pad(i);const t=per[k]||{core:0,other:0,all:0};const H=v=>mx?v/mx*100:0;
     bars+='<div class="bcol" data-act="goto" data-date="'+k+'" title="'+esc(thDs(k)+" ร้าน "+money(t.core)+" · อื่น "+money(t.all-t.core))+'"><i style="height:'+H(t.all-t.core)+'%;background:var(--personal);border-radius:3px 3px 0 0"></i><i style="height:'+H(t.core)+'%;background:var(--sup)"></i></div>';ax+='<span>'+(i===1||i%5===0?i:"")+'</span>'}
@@ -925,10 +932,11 @@ function rejectPop(staff,id){
 }
 function staffCashPop(staff,id){
   const r=(S.reqs[staff]||[]).find(x=>x.id===id);if(!r)return;
-  pop('<h3>'+esc(r.name)+'</h3><div class="popsub">'+esc(GROUPS[gOf(r)].t)+' · เงินสด · ลงโดย '+esc(who(r.staff))+' '+hm(r.createdAt)+'</div><div class="fld"><label for="sc-a">ยอด (บาท)</label><input class="inp num" id="sc-a" inputmode="decimal" value="'+r.amount+'"></div><div class="fld"><label for="sc-n">หมายเหตุ</label><input class="inp" id="sc-n" value="'+esc(r.note||"")+'"></div>'+(OTHERG.includes(gOf(r))?'<div id="sc-mk">'+chk("scmk",r.mkt,MKT_L,MKT_S)+'</div>':'')+'<button class="btn sm" id="totr" style="justify-self:center">เปลี่ยนเป็น “โอนจ่าย”</button><div class="acts"><button class="btn danger" id="del">ลบ</button><button class="btn primary" id="sv">บันทึก</button></div>',p=>{
-    p.querySelector("#totr").addEventListener("click",()=>{close();store.updReq(staff,id,{kind:"transfer",status:"paid",paidAt:Date.now()}).then(()=>toast("เปลี่ยนเป็นโอนจ่ายแล้ว")).catch(fail)});
+  pop('<h3>'+esc(r.name)+'</h3><div class="popsub">'+esc(GROUPS[gOf(r)].t)+' · เงินสด · ลงโดย '+esc(who(r.staff))+' '+hm(r.createdAt)+'</div><div class="fld"><label for="sc-a">ยอด (บาท)</label><input class="inp num" id="sc-a" inputmode="decimal" value="'+r.amount+'"></div><div class="fld"><label for="sc-n">หมายเหตุ</label><input class="inp" id="sc-n" value="'+esc(r.note||"")+'"></div>'+(OTHERG.includes(gOf(r))?'<div id="sc-mk">'+chk("scmk",r.mkt,MKT_L,MKT_S)+'</div>':'')+(gOf(r)==="market"?'<div id="sc-till">'+chk("sctill",r.till,TILL_L,TILL_S)+'</div>':'')+'<button class="btn sm" id="totr" style="justify-self:center">เปลี่ยนเป็น “โอนจ่าย”</button><div class="acts"><button class="btn danger" id="del">ลบ</button><button class="btn primary" id="sv">บันทึก</button></div>',p=>{
+    p.querySelector("#totr").addEventListener("click",()=>{close();store.updReq(staff,id,Object.assign({kind:"transfer",status:"paid",paidAt:Date.now()},r.till?{till:false}:{})).then(()=>toast("เปลี่ยนเป็นโอนจ่ายแล้ว")).catch(fail)});
+    let till=!!r.till;const tb=p.querySelector("#sc-till button");tb&&tb.addEventListener("click",()=>{till=!till;tb.setAttribute("aria-pressed",String(till))});
     let mk=!!r.mkt;const mb=p.querySelector("#sc-mk button");mb&&mb.addEventListener("click",()=>{mk=!mk;mb.setAttribute("aria-pressed",String(mk))});
-    p.querySelector("#sv").addEventListener("click",()=>{const a=num(p.querySelector("#sc-a").value);if(a==null){toast("ใส่ยอดก่อน");return}close();store.updReq(staff,id,Object.assign({amount:a,note:p.querySelector("#sc-n").value.trim()},OTHERG.includes(gOf(r))?{mkt:mk}:{})).then(()=>toast("บันทึกแล้ว")).catch(fail)});
+    p.querySelector("#sv").addEventListener("click",()=>{const a=num(p.querySelector("#sc-a").value);if(a==null){toast("ใส่ยอดก่อน");return}close();store.updReq(staff,id,Object.assign({amount:a,note:p.querySelector("#sc-n").value.trim()},OTHERG.includes(gOf(r))?{mkt:mk}:{},gOf(r)==="market"?{till}:{})).then(()=>toast("บันทึกแล้ว")).catch(fail)});
     arm(p.querySelector("#del"),"กดอีกครั้งเพื่อลบ",()=>{close();store.updReq(staff,id,{deleted:true}).then(()=>toast("ลบแล้ว")).catch(fail)})});
 }
 /* owner: add a supplier amount with the same picker as staff */
@@ -1006,16 +1014,17 @@ function editPop(id,preset,after){
 }
 function extraPop(g,id){
   const e=id?((S.day&&S.day.entries)||{})[id]:null;let pm=e?payE(Object.assign({group:g},e)):defPay(g);let mk=!!(e&&e.mkt);let sp=false;
-  pop('<h3>'+(e?"แก้ไขรายการ":"เพิ่มรายการ")+' · '+GROUPS[g].t+'</h3><div class="popsub">'+esc(thD(S.date))+'</div><div class="fld"><label for="x-n">ชื่อรายการ</label><input class="inp" id="x-n" value="'+esc(e?e.name:"")+'"></div><div class="fld" id="x-payw"><span class="lbl">จ่ายด้วย</span><div id="x-pay">'+payBtns("xpay",pm)+'</div></div>'+(e?'':'<div id="x-split" class="fld">'+chk("xsplit",false,"แบ่งจ่าย: เงินสดส่วนหนึ่ง + โอนส่วนหนึ่ง","เช่น เงินสด 3,000 และโอน 199.89")+'</div>')+(OTHERG.includes(g)?'<div id="x-mk" class="fld">'+chk("xmk",mk,MKT_L,MKT_S)+'</div>':'')+'<div class="fld"><label for="x-a" id="x-al">ราคา (บาท)</label><input class="inp num" id="x-a" inputmode="decimal" value="'+(e&&e.amount!=null?e.amount:"")+'"></div><div class="fld" id="x-a2w" hidden><label for="x-a2">โอน (บาท)</label><input class="inp num" id="x-a2" inputmode="decimal" placeholder="0.00"></div><div class="fld"><label for="x-note">หมายเหตุ</label><input class="inp" id="x-note" value="'+esc(e&&e.note||"")+'"></div><div class="acts">'+(e?'<button class="btn danger" id="del">ลบ</button>':'<button class="btn" id="x">ยกเลิก</button>')+'<button class="btn primary" id="sv">บันทึก</button></div>',p=>{
+  pop('<h3>'+(e?"แก้ไขรายการ":"เพิ่มรายการ")+' · '+GROUPS[g].t+'</h3><div class="popsub">'+esc(thD(S.date))+'</div><div class="fld"><label for="x-n">ชื่อรายการ</label><input class="inp" id="x-n" value="'+esc(e?e.name:"")+'"></div><div class="fld" id="x-payw"><span class="lbl">จ่ายด้วย</span><div id="x-pay">'+payBtns("xpay",pm)+'</div></div>'+(e?'':'<div id="x-split" class="fld">'+chk("xsplit",false,"แบ่งจ่าย: เงินสดส่วนหนึ่ง + โอนส่วนหนึ่ง","เช่น เงินสด 3,000 และโอน 199.89")+'</div>')+(OTHERG.includes(g)?'<div id="x-mk" class="fld">'+chk("xmk",mk,MKT_L,MKT_S)+'</div>':'')+(g==="market"?'<div id="x-till" class="fld">'+chk("xtill",!!(e&&e.till),TILL_L,TILL_S)+'</div>':'')+'<div class="fld"><label for="x-a" id="x-al">ราคา (บาท)</label><input class="inp num" id="x-a" inputmode="decimal" value="'+(e&&e.amount!=null?e.amount:"")+'"></div><div class="fld" id="x-a2w" hidden><label for="x-a2">โอน (บาท)</label><input class="inp num" id="x-a2" inputmode="decimal" placeholder="0.00"></div><div class="fld"><label for="x-note">หมายเหตุ</label><input class="inp" id="x-note" value="'+esc(e&&e.note||"")+'"></div><div class="acts">'+(e?'<button class="btn danger" id="del">ลบ</button>':'<button class="btn" id="x">ยกเลิก</button>')+'<button class="btn primary" id="sv">บันทึก</button></div>',p=>{
     const x=p.querySelector("#x");x&&x.addEventListener("click",close);setTimeout(()=>p.querySelector("#x-n").focus(),60);
     const sb=p.querySelector("#x-split button");sb&&sb.addEventListener("click",()=>{sp=!sp;sb.setAttribute("aria-pressed",String(sp));p.querySelector("#x-payw").hidden=sp;p.querySelector("#x-a2w").hidden=!sp;p.querySelector("#x-al").textContent=sp?"เงินสด (บาท)":"ราคา (บาท)"});
+    let till=!!(e&&e.till);const tl=p.querySelector("#x-till button");tl&&tl.addEventListener("click",()=>{till=!till;tl.setAttribute("aria-pressed",String(till))});
     const xb=p.querySelector("#x-mk button");xb&&xb.addEventListener("click",()=>{mk=!mk;xb.setAttribute("aria-pressed",String(mk))});
     p.querySelector("#x-pay").addEventListener("click",e2=>{const b=e2.target.closest("[data-p]");if(!b)return;pm=b.dataset.p;p.querySelectorAll("#x-pay button").forEach(z=>z.setAttribute("aria-pressed",String(z===b)))});
     p.querySelector("#sv").addEventListener("click",()=>{const n=p.querySelector("#x-n").value.trim();if(!n){toast("ใส่ชื่อรายการก่อน");return}
       if(sp){const a=num(p.querySelector("#x-a").value),a2=num(p.querySelector("#x-a2").value);if(a==null||a<=0||a2==null||a2<=0){toast("ใส่ยอดทั้งเงินสดและโอน");return}
         const nt=p.querySelector("#x-note").value.trim(),b0="x_"+uid();close();
-        store.patchDay(S.date,{entries:{[b0+"a"]:{name:n,group:g,sp:b0,pay:"cash",mkt:OTHERG.includes(g)?mk:false,amount:a,note:nt,deleted:false},[b0+"b"]:{name:n,group:g,sp:b0,pay:"transfer",mkt:false,amount:a2,note:nt,deleted:false}}}).catch(fail);return}
-      const nid=id||("x_"+uid());close();store.patchDay(S.date,{entries:{[nid]:{name:n,group:g,pay:pm,mkt:OTHERG.includes(g)?mk:false,amount:num(p.querySelector("#x-a").value),note:p.querySelector("#x-note").value.trim(),deleted:false}}}).catch(fail)});
+        store.patchDay(S.date,{entries:{[b0+"a"]:{name:n,group:g,sp:b0,pay:"cash",mkt:OTHERG.includes(g)?mk:false,till:g==="market"&&till,amount:a,note:nt,deleted:false},[b0+"b"]:{name:n,group:g,sp:b0,pay:"transfer",mkt:false,till:false,amount:a2,note:nt,deleted:false}}}).catch(fail);return}
+      const nid=id||("x_"+uid());close();store.patchDay(S.date,{entries:{[nid]:{name:n,group:g,pay:g==="market"&&till?"cash":pm,till:g==="market"&&till,mkt:OTHERG.includes(g)?mk:false,amount:num(p.querySelector("#x-a").value),note:p.querySelector("#x-note").value.trim(),deleted:false}}}).catch(fail)});
     const del=p.querySelector("#del");del&&arm(del,"กดอีกครั้งเพื่อลบ",()=>{close();store.patchDay(S.date,{entries:{[id]:{deleted:true}}}).catch(fail)});
   });
 }
@@ -1126,11 +1135,11 @@ async function makePdf(){
   let y=table(lx,top,"ซัพพลายเออร์ (โอน)","#806000",supRows,lrh,t.sup,[.42,.26]);
   OTHERG.forEach((g,i)=>{y+=lrh*.4;y=table(lx,y,GROUPS[g].t,GROUPS[g].c,otherRows[i],lrh,t[g],[.42,.26])});
   // right: market, supply, cash box, totals
-  const mk=grp("market"),sp=grp("supply");const rightCount=mk.length+sp.length+2+13.5+(t.mktX?1:0);
+  const mk=grp("market"),sp=grp("supply");const rightCount=mk.length+sp.length+2+13.5+(t.mktX?1:0)+(t.till?1:0);
   const rrh=Math.max(22,Math.min(36,avail/rightCount));
   y=table(rx,top,"ของตลาด (เงินสด)","#B4570B",mk,rrh,t.market,[.42,.26]);y+=rrh*.4;
   y=table(rx,y,"ค่าวัสดุสิ้นเปลือง","#5B4FC4",sp,rrh,t.supply,[.42,.26]);y+=rrh*.4;
-  y=table(rx,y,"เงินสดที่จ่าย (ตลาด+วัสดุ"+(t.supC?"+ซัพสด":"")+(t.mktX?"+ใช้เงินตลาด":"")+")","#B4570B",[["รวมเงินสดที่จ่าย",t.cash,""],...(t.mktX?[["ในนี้ หมวดอื่นที่ใช้เงินตลาด",t.mktX,""]]:[]),["เงินตั้งต้น",t.opening,""],["เงินที่เหลือ",t.left,""],["เงินเกิน",t.diff!=null&&t.diff>0?t.diff:null,""],["เงินขาด",t.diff!=null&&t.diff<0?-t.diff:null,""]],rrh,null,[.42,.26]);y+=rrh*.6;
+  y=table(rx,y,"เงินสดที่จ่าย (ตลาด+วัสดุ"+(t.supC?"+ซัพสด":"")+(t.mktX?"+ใช้เงินตลาด":"")+")","#B4570B",[["รวมเงินสดที่จ่าย",t.cash,""],...(t.mktX?[["ในนี้ หมวดอื่นที่ใช้เงินตลาด",t.mktX,""]]:[]),["เงินตั้งต้น",t.opening,""],["เงินที่เหลือ",t.left,""],["เงินเกิน",t.diff!=null&&t.diff>0?t.diff:null,""],["เงินขาด",t.diff!=null&&t.diff<0?-t.diff:null,""],...(t.till?[["เงินในเก๊ะ (แยกต่างหาก)",t.till,""]]:[])],rrh,null,[.42,.26]);y+=rrh*.6;
   // totals box
   const bh=rrh*7.4;x.fillStyle="#806000";x.fillRect(rx,y,colW,bh);x.fillStyle="#fff";
   x.font=F(700,20);x.fillText("รวมค่าใช้จ่าย",rx+14,y+rrh*.8);
@@ -1177,7 +1186,7 @@ function monthText(){const {tot,cs}=monthAgg();return["สรุปค่าใ�
 let tt=null;function toast(t){const r=document.getElementById("toastroot");r.innerHTML='<div class="toast" role="status">'+esc(t)+'</div>';clearTimeout(tt);tt=setTimeout(()=>r.innerHTML="",2400)}
 function setDate(d){S.date=d;S.openNotes={};if(S.role==="owner"){if(d.slice(0,7)!==S.month){S.month=d.slice(0,7);subMonth()}subDay()}else subMine();render()}
 function setMonth(m){S.month=m;subMonth();render()}
-function staffReset(){Object.assign(S.staff,{sel:null,q:"",amt:"",note:"",newName:"",mkt:false,split:false,amt2:"",stT:"done"})}
+function staffReset(){Object.assign(S.staff,{sel:null,q:"",amt:"",note:"",newName:"",mkt:false,till:false,split:false,amt2:"",stT:"done"})}
 function onClick(e){
   const el=e.target.closest("[data-act]");if(!el)return;const a=el.dataset.act,id=el.dataset.id;const st=S.staff;
   if(a==="pay"){e.stopPropagation();return payPop(el.dataset.staff,id)}
@@ -1199,12 +1208,14 @@ function onClick(e){
   else if(a==="splitmine")splitMinePop(el.dataset.sp);
   else if(a==="splitent")splitEntPop(el.dataset.sp);
   else if(a==="mkttog"){store.patchDay(S.date,{entries:{[id]:{name:el.dataset.name,group:el.dataset.g,mkt:el.dataset.v!=="1"}}}).catch(fail)}
-  else if(a==="spay"){st.pay=el.dataset.p;if(st.pay!=="cash")st.mkt=false;render()}
+  else if(a==="spay"){st.pay=el.dataset.p;if(st.pay!=="cash"){st.mkt=false;st.till=false}render()}
   else if(a==="smkt"){st.mkt=!st.mkt;render()}
+  else if(a==="still"){st.till=!st.till;render()}
   else if(a==="ssplit"){st.split=!st.split;render()}
   else if(a==="sst"){st.stT=el.dataset.p;render()}
-  else if(a==="paytog"){const np=el.dataset.p==="transfer"?"cash":"transfer";store.patchDay(S.date,{entries:{[id]:{name:el.dataset.name,group:el.dataset.g,pay:np}}}).catch(fail)}
-  else if(a==="sgroup"){st.group=el.dataset.g;st.pay=defPay(st.group);st.mkt=false;st.split=false;st.amt2="";st.stT="done";st.sel=null;st.q="";st.newName="";render()}
+  else if(a==="tilltog"){const on=el.dataset.v!=="1";store.patchDay(S.date,{entries:{[id]:Object.assign({name:el.dataset.name,group:el.dataset.g,till:on},on?{pay:"cash"}:{})}}).catch(fail)}
+  else if(a==="paytog"){const np=el.dataset.p==="transfer"?"cash":"transfer";store.patchDay(S.date,{entries:{[id]:Object.assign({name:el.dataset.name,group:el.dataset.g,pay:np},np==="transfer"&&el.dataset.g==="market"?{till:false}:{})}}).catch(fail)}
+  else if(a==="sgroup"){st.group=el.dataset.g;st.pay=defPay(st.group);st.mkt=false;st.till=false;st.split=false;st.amt2="";st.stT="done";st.sel=null;st.q="";st.newName="";render()}
   else if(a==="spick"){const n=S.names.find(x=>x.id===id);if(n){st.sel={id:n.id,name:n.name};render();const am=document.getElementById("s-amt");am&&am.focus()}}
   else if(a==="spicktemp"){st.sel={id:null,name:el.dataset.name,isNew:true};render();const am=document.getElementById("s-amt");am&&am.focus()}
   else if(a==="snew"){const nm=st.q.trim();if(nm){st.sel={id:null,name:nm,isNew:true};render();const am=document.getElementById("s-amt");am&&am.focus()}else newNamePop(n=>{close();st.sel={id:null,name:n,isNew:true};render();const am=document.getElementById("s-amt");am&&am.focus()})}
@@ -1218,11 +1229,11 @@ function onClick(e){
     if(amt==null||amt<=0){toast("ใส่ยอดก่อน");document.getElementById("s-amt").focus();return}
     if(st.split){const amt2=num((document.getElementById("s-amt2")||{}).value);if(amt2==null||amt2<=0){toast("ใส่ยอดที่โอนด้วย");const e3=document.getElementById("s-amt2");e3&&e3.focus();return}
       const sp=uid();const base={group:st.group,date:S.date,supId:sel.id||null,name:sel.name,note:noteV};
-      const b1=reqBody("cash",Object.assign({amount:amt,mkt:!!(st.mkt&&OTHERG.includes(st.group)),sp,createdAt:Date.now()},base));
+      const b1=reqBody("cash",Object.assign({amount:amt,mkt:!!(st.mkt&&OTHERG.includes(st.group)),till:!!(st.till&&st.group==="market"),sp,createdAt:Date.now()},base));
       const b2=reqBody(st.stT,Object.assign({amount:amt2,sp,createdAt:Date.now()+1},base));
       if(sel.isNew){b1.newName=true;b2.newName=true}
       el.disabled=true;store.sendReq(b1).then(()=>store.sendReq(b2)).then(()=>{toast("บันทึกแบ่งจ่าย "+sel.name+" เงินสด "+money(amt)+" + โอน "+money(amt2));staffReset();render();window.scrollTo(0,0)}).catch(e2=>{el.disabled=false;fail(e2)});return}
-    const body=reqBody(st.pay,{group:st.group,mkt:!!(st.mkt&&st.pay==="cash"&&OTHERG.includes(st.group)),date:S.date,supId:sel.id||null,name:sel.name,amount:amt,note:noteV,createdAt:Date.now()});
+    const body=reqBody(st.pay,{group:st.group,mkt:!!(st.mkt&&st.pay==="cash"&&OTHERG.includes(st.group)),till:!!(st.till&&st.pay==="cash"&&st.group==="market"),date:S.date,supId:sel.id||null,name:sel.name,amount:amt,note:noteV,createdAt:Date.now()});
     if(sel.isNew)body.newName=true;
     el.disabled=true;
     store.sendReq(body).then(()=>{toast(payTxt[st.pay][1]+sel.name+" "+money(amt)+" แล้ว");staffReset();render();window.scrollTo(0,0)}).catch(e2=>{el.disabled=false;fail(e2)})}
