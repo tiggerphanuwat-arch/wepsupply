@@ -363,6 +363,13 @@ const num=v=>{if(v==null)return null;const s=thaiDigits(v).replace(/[,\s฿]/g,"
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const byTh=(a,b)=>String(a.name).localeCompare(String(b.name),"th");
 
+/* ช่องตัวเลข: กดปุ่มตัวเลขแล้วได้ตัวเลขเลย แม้คีย์บอร์ดจะเป็นภาษาไทย (ดูจากตำแหน่งปุ่ม) */
+function keyDigit(e){const m=/^(?:Digit|Numpad)([0-9])$/.exec(e.code||"");return m?m[1]:/^[0-9]$/.test(e.key)?e.key:null}
+document.addEventListener("keydown",e=>{const t=e.target;if(!t||t.tagName!=="INPUT"||e.ctrlKey||e.metaKey||e.altKey)return;
+  const m=t.getAttribute("inputmode");if(m!=="decimal"&&m!=="numeric"&&m!=="tel")return;
+  let ch=keyDigit(e);if(ch==null&&m==="decimal"&&(e.code==="Period"||e.code==="NumpadDecimal"))ch=".";
+  if(ch==null||e.key===ch)return;e.preventDefault();document.execCommand("insertText",false,ch)},true);
+
 /* number-only inputs: Thai digits become Arabic, letters are dropped */
 function cleanNum(v,mode){v=thaiDigits(v);if(mode==="decimal"){v=v.replace(/[^0-9.,]/g,"");const i=v.indexOf(".");if(i>=0)v=v.slice(0,i+1)+v.slice(i+1).replace(/\./g,"");return v}return v.replace(/[^0-9\- ]/g,"")}
 document.addEventListener("input",e=>{const t=e.target;if(t.tagName!=="INPUT")return;const m=t.getAttribute("inputmode");if(m!=="decimal"&&m!=="numeric"&&m!=="tel")return;const c=cleanNum(t.value,m==="decimal"?"decimal":"id");if(c!==t.value){t.value=c;try{t.setSelectionRange(c.length,c.length)}catch(x){}}},true);
@@ -419,8 +426,9 @@ function subOwner(){
 }
 function subStaff(sid){
   if(staffSubs[sid])return;staffSubs[sid]={};const col=()=>db.collection("requests/"+sid+"/items");
-  const merge=()=>{const m={};[staffSubs[sid].pend||[],staffSubs[sid].month||[]].forEach(a=>a.forEach(r=>m[r.id]=r));S.reqs[sid]=Object.values(m);render();resolvePeople()};
+  const merge=()=>{const m={};[staffSubs[sid].pend||[],staffSubs[sid].month||[],staffSubs[sid].ask||[]].forEach(a=>a.forEach(r=>m[r.id]=r));S.reqs[sid]=Object.values(m);render();resolvePeople()};
   staffSubs[sid].u1=col().where("status","==","pending").onSnapshot(q=>{staffSubs[sid].pend=q.docs.map(d=>Object.assign({id:d.id,staff:sid},d.data()));merge()},err);
+  staffSubs[sid].u3=col().where("cancelReq","==",true).onSnapshot(q=>{staffSubs[sid].ask=q.docs.map(d=>Object.assign({id:d.id,staff:sid},d.data()));merge()},err);
   staffSubs[sid].sub=()=>{staffSubs[sid].u2&&staffSubs[sid].u2();staffSubs[sid].u2=col().where("date",">=",S.month+"-01").where("date","<=",S.month+"-31").onSnapshot(q=>{staffSubs[sid].month=q.docs.map(d=>Object.assign({id:d.id,staff:sid},d.data()));merge()},err)};
   staffSubs[sid].sub();
 }
@@ -456,7 +464,7 @@ function startLive(){
   lt=setTimeout(()=>{sync("warn","ยังเชื่อมต่อไม่ได้");setBanner('<div class="banner warn">ยังดึงข้อมูลไม่ได้ ตัวเลขที่เห็นอาจยังไม่ล่าสุด</div>')},10000);
   applyRole();
 }
-function unsubAll(){for(const k in un){try{un[k]&&un[k]()}catch(e){}delete un[k]}for(const k in staffSubs){try{staffSubs[k].u1&&staffSubs[k].u1();staffSubs[k].u2&&staffSubs[k].u2()}catch(e){}}staffSubs={};S.reqs={};S.staff.mine=[]}
+function unsubAll(){for(const k in un){try{un[k]&&un[k]()}catch(e){}delete un[k]}for(const k in staffSubs){try{staffSubs[k].u1&&staffSubs[k].u1();staffSubs[k].u2&&staffSubs[k].u2();staffSubs[k].u3&&staffSubs[k].u3()}catch(e){}}staffSubs={};S.reqs={};S.staff.mine=[]}
 function applyRole(){
   const want=(S.isOwner&&location.hash!=="#staff")?"owner":"staff";
   if(want===S.role)return;S.role=want;close();buildNav();
@@ -482,7 +490,7 @@ function drawLock(msg){
   r.querySelectorAll("[data-k]").forEach(b=>b.addEventListener("click",()=>pinKey(b.dataset.k)));
   const lk=document.getElementById("lklogout");lk&&lk.addEventListener("click",logout);
 }
-document.addEventListener("keydown",e=>{if(!S.lock.locked)return;if(/^[0-9]$/.test(e.key))pinKey(e.key);else if(e.key==="Backspace")pinKey("del")});
+document.addEventListener("keydown",e=>{if(!S.lock.locked)return;const dk=keyDigit(e);if(dk!=null){e.preventDefault();pinKey(dk)}else if(e.key==="Backspace")pinKey("del")});
 async function pinKey(k){
   if(Date.now()<S.lock.until){drawLock("ใส่ผิดหลายครั้ง รอสักครู่แล้วลองใหม่");return}
   if(k==="del")S.lock.entry=S.lock.entry.slice(0,-1);else if(k==="clr")S.lock.entry="";else if(S.lock.entry.length<4)S.lock.entry+=k;
@@ -496,12 +504,14 @@ async function pinKey(k){
 const dirOf=r=>S.dir.find(x=>x.id===r.supId)||S.dir.find(x=>x.name===r.name&&x.group==="sup");
 const isHold=r=>!!r&&payR(r)==="transfer"&&r.status==="pending"&&(r.hold!=null?!!r.hold:!!(dirOf(r)||{}).hold35);
 function dueStart(r){const a=(r.date||today()).split("-").map(Number);let y=a[0],m=a[1];if(a[2]>=3){m++;if(m>12){m=1;y++}}return y+"-"+pad(m)+"-03"}
+const asked=r=>!!r.cancelReq&&!r.deleted&&r.status!=="cancelled"&&r.status!=="rejected";
+const askedAll=()=>{const out=[];for(const k in S.reqs)S.reqs[k].forEach(r=>{if(asked(r))out.push(r)});return out.sort((a,b)=>(a.cancelReqAt||0)-(b.cancelReqAt||0))};
 const dueNow=r=>today()>=dueStart(r);
 const heldAll=()=>pendingAll().filter(isHold);
 const readyAll=()=>pendingAll().filter(r=>!isHold(r));
 function holdBanner(){if(S.role!=="owner")return"";const hs=heldAll().filter(dueNow);if(!hs.length)return"";const d=+today().slice(8,10);const by={};hs.forEach(r=>by[r.name]=(by[r.name]||0)+(r.amount||0));
   return '<div class="banner warn"><span><b>'+(d>5?"เลยช่วงโอนวันที่ 3–5 แล้ว":"ถึงวันโอนแล้ว (วันที่ 3–5)")+'</b> · ยังไม่ได้โอน: '+Object.keys(by).map(n=>esc(n)+' ฿'+money(by[n])).join(" · ")+'</span>'+(S.tab==="inbox"?'':'<button class="btn sm" data-tab="inbox">ไปหน้ารอโอน</button>')+'</div>'}
-function pendingAll(){const out=[];for(const k in S.reqs)S.reqs[k].forEach(r=>{if(r.status==="pending"&&!r.deleted&&(r.kind||"transfer")==="transfer")out.push(r)});return out.sort((a,b)=>(a.createdAt||0)-(b.createdAt||0))}
+function pendingAll(){const out=[];for(const k in S.reqs)S.reqs[k].forEach(r=>{if(r.status==="pending"&&!r.deleted&&!r.cancelReq&&(r.kind||"transfer")==="transfer")out.push(r)});return out.sort((a,b)=>(a.createdAt||0)-(b.createdAt||0))}
 function buildNav(){
   const staff=S.role==="staff";document.getElementById("app").classList.toggle("staffmode",staff);
   document.getElementById("tabbar").hidden=staff;document.getElementById("gear").hidden=staff;
@@ -539,7 +549,7 @@ function totals(day,date){
 /* render */
 function render(){
   if(S.mode!=="live"||!S.role)return;
-  const pend=readyAll().length+heldAll().filter(dueNow).length;
+  const pend=readyAll().length+heldAll().filter(dueNow).length+(S.role==="owner"?askedAll().length:0);
   document.querySelectorAll("[data-tab]").forEach(b=>{b.setAttribute("aria-current",b.dataset.tab===S.tab?"page":"false");const bd=b.querySelector("[data-badge]");if(bd){bd.hidden=!(b.dataset.tab==="inbox"&&pend);bd.textContent=pend}});
   const v=document.getElementById("view");
   const ae=document.activeElement;const keep=ae&&ae.id&&v.contains(ae)?{id:ae.id,v:ae.value,s:ae.selectionStart,e:ae.selectionEnd}:null;
@@ -550,7 +560,8 @@ function render(){
   const st=document.getElementById("stickyroot");
   if(S.role==="owner"&&S.tab==="day"){const t=totals(S.day,S.date);st.innerHTML='<div class="sticky"><div class="pair"><div><div class="k">รวมทุกอย่าง</div><div class="v num">฿'+money(t.all)+'</div></div><div><div class="k">ค่าใช้จ่ายร้าน</div><div class="v num">฿'+money(t.core)+'</div></div></div><button class="btn primary sm" data-act="pdf">'+IC.pdf+'PDF</button></div>'}else st.innerHTML="";
 }
-function statusPill(r){if(payR(r)==="cash")return '<span class="pill info">เงินสด · '+esc(GROUPS[gOf(r)].t)+'</span>';
+function statusPill(r){if(asked(r))return '<span class="pill warn">ขอยกเลิก · รออนุมัติ</span>';
+  if(payR(r)==="cash")return '<span class="pill info">เงินสด · '+esc(GROUPS[gOf(r)].t)+'</span>';
   return r.status==="paid"?'<span class="pill good">โอนแล้ว '+hm(r.paidAt)+'</span>':r.status==="rejected"?'<span class="pill bad">ส่งกลับ</span>':r.status==="cancelled"?'<span class="pill bad">ยกเลิก</span>':isHold(r)?'<span class="pill warn">ยังไม่โอน</span>':'<span class="pill warn">รอโอน</span>'}
 
 /* ---- shared name picker (staff + owner) ---- */
@@ -583,8 +594,8 @@ function vStaff(){
   h+='<div class="step"><h2><i>4</i>ใส่ยอด'+(isSup&&st.pay==="transfer"&&!st.split?"ตามบิล":"")+'</h2>'+(st.split?'<div class="fld"><label for="s-amt">เงินสด (บาท)</label><input class="inp bigamt num" id="s-amt" inputmode="decimal" placeholder="0.00" value="'+esc(st.amt)+'"></div><div class="fld"><label for="s-amt2">โอน (บาท)</label><input class="inp bigamt num" id="s-amt2" inputmode="decimal" placeholder="0.00" value="'+esc(st.amt2)+'"></div><div class="fld"><span class="lbl">ส่วนที่โอน</span><div class="paypick"><button type="button" data-act="sst" data-p="done" aria-pressed="'+(st.stT==="done")+'">โอนจ่ายแล้ว<small>โอนไปแล้ว</small></button><button type="button" data-act="sst" data-p="transfer" aria-pressed="'+(st.stT==="transfer")+'">รอโอน<small>รอเจ้าของโอนให้</small></button></div></div>':'<input class="inp bigamt num" id="s-amt" inputmode="decimal" placeholder="0.00" value="'+esc(st.amt)+'">')+'<input class="inp" id="s-note" placeholder="หมายเหตุ (ถ้ามี)" value="'+esc(st.note)+'"></div>';
   h+='<button class="btn primary block sendbtn" data-act="send">'+(st.split?"บันทึกแบ่งจ่าย (เงินสด + โอน)":payTxt[st.pay][0])+'</button>';
   const mine=st.mine.filter(r=>!r.deleted).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
-  h+='<div class="sec"><div class="sec-h"><div><h2>ที่ส่งวันนี้</h2><div class="sub">แตะรายการเพื่อยกเลิก ถ้าส่งผิด</div></div></div>'+
-    (mine.length?groupBySp(mine).map(it=>it.parts.length>1?splitRowHTML(it.parts,"splitmine"):(r=>'<div class="req'+((r.status==="pending"||r.status==="recorded"||(r.status==="paid"&&r.selfPaid))?" click":"")+'" data-act="mine" data-id="'+r.id+'"><div class="nm">'+esc(r.name)+(r.newName?' <span class="tag">ชื่อใหม่</span>':'')+'</div><div class="amtv num">'+money(r.amount)+'</div><div class="meta">ส่งเวลา '+hm(r.createdAt)+(r.note?' · '+esc(r.note):'')+(r.status==="rejected"&&r.reason?' · <b style="color:var(--bad)">'+esc(r.reason)+'</b>':'')+'</div>'+statusPill(r)+'</div>')(it.parts[0])).join(""):'<div class="empty">ยังไม่ได้ส่งอะไรวันนี้</div>')+'</div>';
+  h+='<div class="sec"><div class="sec-h"><div><h2>ที่ส่งวันนี้</h2><div class="sub">แตะรายการเพื่อยกเลิก ถ้าส่งผิด · รายการโอนต้องรอเจ้าของร้านอนุมัติ</div></div></div>'+
+    (mine.length?groupBySp(mine).map(it=>it.parts.length>1?splitRowHTML(it.parts,"splitmine"):(r=>'<div class="req'+(canAsk(r)?" click":"")+'" data-act="mine" data-id="'+r.id+'"><div class="nm">'+esc(r.name)+(r.newName?' <span class="tag">ชื่อใหม่</span>':'')+'</div><div class="amtv num">'+money(r.amount)+'</div><div class="meta">ส่งเวลา '+hm(r.createdAt)+(r.note?' · '+esc(r.note):'')+(r.status==="rejected"&&r.reason?' · <b style="color:var(--bad)">'+esc(r.reason)+'</b>':'')+(r.cancelDenied&&!r.cancelReq?' · <b style="color:var(--bad)">เจ้าของร้านไม่อนุมัติให้ยกเลิก</b>':'')+'</div>'+statusPill(r)+'</div>')(it.parts[0])).join(""):'<div class="empty">ยังไม่ได้ส่งอะไรวันนี้</div>')+'</div>';
   return h+'</div>';
 }
 
@@ -593,7 +604,10 @@ const reqRow=r=>'<div class="req click" data-act="pay" data-staff="'+r.staff+'" 
 function vInbox(){
   const P=readyAll(),H=heldAll();const hsum=H.reduce((s,r)=>s+(r.amount||0),0);const sum=P.reduce((s,r)=>s+(r.amount||0),0);
   const done=reqsOn(today(),"transfer").filter(r=>r.status==="paid").sort((a,b)=>(b.paidAt||0)-(a.paidAt||0));
-  let h='<div class="kpis"><div class="kpi"><div class="k">รอโอน</div><div class="v num">'+P.length+' รายการ</div></div><div class="kpi t"><div class="k">ยอดรอโอนรวม</div><div class="v num">฿'+money(sum)+'</div></div></div>';
+  const C=askedAll();
+  const askRow=r=>'<div class="req click" data-act="pay" data-staff="'+r.staff+'" data-id="'+r.id+'"><div class="nm">'+esc(r.name)+(r.sp?' <span class="tag">แบ่งจ่าย</span>':'')+'</div><div class="amtv num">'+money(r.amount)+'</div><div class="meta">'+esc(who(r.staff))+' · '+esc(thDs(r.date))+(r.cancelWhy?' · '+esc(r.cancelWhy):'')+'</div>'+statusPill(r)+'</div>';
+  let h=(C.length?'<div class="sec" style="margin-bottom:14px"><div class="sec-h"><div><h2>พนักงานขอยกเลิก</h2><div class="sub">แตะเพื่ออนุมัติหรือไม่อนุมัติ</div></div></div>'+C.map(askRow).join("")+'</div>':'');
+  h+='<div class="kpis"><div class="kpi"><div class="k">รอโอน</div><div class="v num">'+P.length+' รายการ</div></div><div class="kpi t"><div class="k">ยอดรอโอนรวม</div><div class="v num">฿'+money(sum)+'</div></div></div>';
   h+='<div class="cols"><div class="colstack"><div class="sec g-sup"><div class="sec-h"><div><h2>รอโอน</h2><div class="sub">แตะ “โอน” เพื่อเปิด QR พร้อมเพย์</div></div></div>'+
     (P.length?P.map(reqRow).join(""):'<div class="empty"><b>ไม่มียอดรอโอน</b><br>เมื่อพนักงานส่งยอดมา จะขึ้นที่นี่</div>')+
     '<button class="addrow" data-act="ownadd">+ ใส่ยอดเอง</button></div>'+
@@ -634,12 +648,24 @@ function splitReqPop(sp){
     p.querySelector("#sv").addEventListener("click",()=>{const am=ps.map(r=>num(p.querySelector("#spa-"+r.id).value));if(am.some(a=>a==null||a<=0)){toast("ใส่ยอดให้ครบทุกส่วน");return}const nt=p.querySelector("#sp-n").value.trim();close();
       Promise.all(ps.map((r,i)=>store.updReq(r.staff,r.id,Object.assign({amount:am[i],note:nt},partPay(r)==="cash"&&OTHERG.includes(gOf(r))?{mkt:mk[r.id]}:{})))).then(()=>toast("บันทึกแล้ว")).catch(fail)});
     arm(p.querySelector("#del"),"กดอีกครั้งเพื่อลบทั้งรายการ",()=>{close();Promise.all(ps.map(r=>store.updReq(r.staff,r.id,{deleted:true}))).then(()=>toast("ลบแล้ว")).catch(fail)})})}
+const canAsk=r=>r.status==="pending"||r.status==="recorded"||r.status==="paid";
+const myUpd=(r,patch)=>Q("req/"+S.me+"/"+r.id,()=>db.doc("requests/"+S.me+"/items/"+r.id).update(patch));
+/* เงินสดล้วน: ยกเลิกเองได้ทันที · มีส่วนที่เป็นการโอน: ส่งคำขอให้เจ้าของร้านอนุมัติ */
+function minePopFor(ps,title,sub){
+  const waiting=ps.some(asked),needOk=ps.some(r=>payR(r)==="transfer");
+  const body=waiting?'<div class="banner warn" style="margin:0">ส่งคำขอยกเลิกแล้ว รอเจ้าของร้านอนุมัติ</div>':needOk?'<div>รายการโอนต้องให้เจ้าของร้านอนุมัติก่อน จึงจะยกเลิก</div><div class="fld"><label for="cq">เหตุผล (ถ้ามี)</label><input class="inp" id="cq" placeholder="เช่น ส่งยอดผิด"></div>':'<div>ถ้าส่งผิด ยกเลิกรายการนี้แล้วส่งใหม่ได้</div>';
+  const btn=waiting?'<button class="btn" id="unask">ถอนคำขอ</button>':'<button class="btn danger" id="cn">'+(needOk?"ขอยกเลิกรายการ":"ยกเลิกรายการนี้")+'</button>';
+  pop('<h3>'+title+'</h3><div class="popsub">'+sub+'</div>'+body+'<div class="acts"><button class="btn" id="x">ปิด</button>'+btn+'</div>',p=>{
+    p.querySelector("#x").addEventListener("click",close);
+    const all=(fn,msg)=>{close();Promise.all(ps.map(r=>myUpd(r,fn(r)))).then(()=>toast(msg)).catch(fail)};
+    const un=p.querySelector("#unask");un&&un.addEventListener("click",()=>all(()=>({cancelReq:false}),"ถอนคำขอแล้ว"));
+    const cn=p.querySelector("#cn");cn&&arm(cn,"กดอีกครั้งเพื่อยืนยัน",()=>{
+      if(!needOk)return all(()=>({deleted:true}),"ยกเลิกแล้ว");
+      const why=p.querySelector("#cq").value.trim(),at=Date.now();
+      all(()=>({cancelReq:true,cancelReqAt:at,cancelWhy:why,cancelDenied:false}),"ส่งคำขอยกเลิกแล้ว รอเจ้าของร้านอนุมัติ")})})}
 function splitMinePop(sp){
-  const ps=S.staff.mine.filter(r=>r.sp===sp&&!r.deleted&&live(r));if(!ps.length)return;const r0=ps[0];
-  const can=ps.every(r=>r.status==="pending"||r.status==="recorded"||(r.status==="paid"&&r.selfPaid));
-  pop('<h3>'+esc(r0.name)+'</h3><div class="popsub">แบ่งจ่าย · รวม '+money(spSum(ps))+' บาท · ส่งเวลา '+hm(r0.createdAt)+'</div><div style="font-weight:600">'+spLabel(ps)+'</div>'+(can?'<div>ถ้าส่งผิด ยกเลิกทั้งรายการแล้วส่งใหม่ได้</div>':'<div>เจ้าของร้านดำเนินการบางส่วนแล้ว ยกเลิกเองไม่ได้ ติดต่อเจ้าของร้านได้เลย</div>')+'<div class="acts"><button class="btn" id="x">ปิด</button>'+(can?'<button class="btn danger" id="cn">ยกเลิกรายการนี้</button>':'')+'</div>',p=>{
-    p.querySelector("#x").addEventListener("click",close);const cn=p.querySelector("#cn");
-    cn&&arm(cn,"กดอีกครั้งเพื่อยืนยัน",()=>{close();Promise.all(ps.map(r=>Q("req/"+S.me+"/"+r.id,()=>db.doc("requests/"+S.me+"/items/"+r.id).update(r.status==="recorded"?{deleted:true}:{status:"cancelled"})))).then(()=>toast("ยกเลิกแล้ว")).catch(fail)})})}
+  const ps=S.staff.mine.filter(r=>r.sp===sp&&!r.deleted&&live(r));if(!ps.length||!ps.every(canAsk))return;const r0=ps[0];
+  minePopFor(ps,esc(r0.name),'แบ่งจ่าย · รวม '+money(spSum(ps))+' บาท · ส่งเวลา '+hm(r0.createdAt)+'<br>'+spLabel(ps))}
 function splitEntPop(sp){
   const E=(S.day&&S.day.entries)||{};const ps=Object.entries(E).filter(([id,e])=>e&&!e.deleted&&e.sp===sp).map(([id,e])=>Object.assign({id},e));if(!ps.length)return;const r0=ps[0];const mk={};ps.forEach(r=>mk[r.id]=!!r.mkt);
   pop('<h3>แก้ไขแบ่งจ่าย · '+esc(GROUPS[r0.group].t)+'</h3><div class="popsub">'+esc(thD(S.date))+' · รวม '+money(spSum(ps))+' บาท</div><div class="fld"><label for="sp-name">ชื่อรายการ</label><input class="inp" id="sp-name" value="'+esc(r0.name)+'"></div>'+ps.map(r=>partBox(r,"spa-")).join("")+'<div class="fld"><label for="sp-n">หมายเหตุ</label><input class="inp" id="sp-n" value="'+esc(r0.note||"")+'"></div><div class="acts"><button class="btn danger" id="del">ลบทั้งรายการ</button><button class="btn primary" id="sv">บันทึก</button></div>',p=>{
@@ -745,7 +771,7 @@ function vSum(){
 
 /* popups */
 let popCtx=null;
-function pop(html,mount){const r=document.getElementById("poproot");r.innerHTML='<div class="scrim" id="scrim"><div class="pop" role="dialog" aria-modal="true"><div class="grab"></div>'+html+'</div></div>';const s=document.getElementById("scrim");s.addEventListener("click",e=>{if(e.target===s)close()});mount&&mount(r.querySelector(".pop"))}
+function pop(html,mount){const r=document.getElementById("poproot");const af=document.activeElement;if(af&&af.tagName==="BUTTON")af.blur();r.innerHTML='<div class="scrim" id="scrim"><div class="pop" role="dialog" aria-modal="true"><div class="grab"></div>'+html+'</div></div>';const s=document.getElementById("scrim");s.addEventListener("click",e=>{if(e.target===s)close()});mount&&mount(r.querySelector(".pop"))}
 function close(){popCtx=null;document.getElementById("poproot").innerHTML=""}
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!S.lock.locked)close()});
 const BANKS=["กสิกรไทย","กรุงไทย","กรุงเทพ","กรุงศรี","ไทยพาณิชย์"];
@@ -753,8 +779,17 @@ const BANKS=["กสิกรไทย","กรุงไทย","กรุงเ
 const bankSel=cur=>'<div class="fld"><label for="e-bank">ธนาคาร</label><select class="inp" id="e-bank"><option value="">เลือกธนาคาร</option>'+(cur&&!BANKS.includes(cur)?BANKS.concat(cur):BANKS).map(b=>'<option value="'+esc(b)+'"'+(b===cur?' selected':'')+'>'+esc(b)+'</option>').join("")+'</select></div>';
 function arm(b,label,fn){b.addEventListener("click",()=>{if(b.dataset.a)fn();else{b.dataset.a=1;const o=b.textContent;b.textContent=label;setTimeout(()=>{if(b.isConnected){delete b.dataset.a;b.textContent=o}},3000)}})}
 
+function cancelAskPop(staff,r){
+  const ps=r.sp?(S.reqs[staff]||[]).filter(x=>x.sp===r.sp&&asked(x)):[r];
+  pop('<h3>'+esc(r.name)+'</h3><div class="popsub">'+esc(who(staff))+' ขอยกเลิก · '+esc(thDs(r.date))+' '+hm(r.createdAt)+'</div><div class="payamt num">฿'+money(spSum(ps))+'</div>'+(ps.length>1?'<div style="text-align:center">'+spLabel(ps)+'</div>':'')+(r.cancelWhy?'<div>เหตุผล: '+esc(r.cancelWhy)+'</div>':'')+(ps.some(x=>payR(x)==="transfer"&&x.status==="paid")?'<div class="banner warn" style="margin:0">รายการนี้บันทึกว่าโอนแล้ว การยกเลิกในแอปไม่ได้ดึงเงินคืน</div>':'')+'<button class="btn danger block" id="okc">อนุมัติให้ยกเลิก</button><div class="acts"><button class="btn" id="x">ปิด</button><button class="btn" id="noc">ไม่อนุมัติ</button></div>',p=>{
+    p.querySelector("#x").addEventListener("click",close);
+    const all=(fn,msg)=>{close();Promise.all(ps.map(x=>store.updReq(staff,x.id,fn(x)))).then(()=>toast(msg)).catch(fail)};
+    p.querySelector("#noc").addEventListener("click",()=>all(()=>({cancelReq:false,cancelDenied:true}),"ไม่อนุมัติ รายการยังอยู่เหมือนเดิม"));
+    arm(p.querySelector("#okc"),"กดอีกครั้งเพื่ออนุมัติ",()=>all(x=>Object.assign({cancelReq:false,cancelledAt:Date.now()},payR(x)==="cash"?{deleted:true}:{status:"cancelled",paidAt:null}),"อนุมัติแล้ว ยกเลิกรายการ"))});
+}
 function payPop(staff,id){
   const r=(S.reqs[staff]||[]).find(x=>x.id===id);if(!r)return;
+  if(asked(r))return cancelAskPop(staff,r);
   const d=S.dir.find(x=>x.id===r.supId)||S.dir.find(x=>x.name===r.name&&x.group==="sup")||{};
   const payload=ppPayload(d.promptpay,r.amount);const svg=payload?qrSvg(payload):null;
   const paid=r.status==="paid";
@@ -897,10 +932,8 @@ function extraPop(g,id){
   });
 }
 function minePop(id){
-  const r=S.staff.mine.find(x=>x.id===id);if(!r||!(r.status==="pending"||r.status==="recorded"||(r.status==="paid"&&r.selfPaid)))return;
-  pop('<h3>'+esc(r.name)+'</h3><div class="popsub">'+money(r.amount)+' บาท · ส่งเวลา '+hm(r.createdAt)+'</div><div>ถ้าส่งผิด ยกเลิกรายการนี้แล้วส่งใหม่ได้</div><div class="acts"><button class="btn" id="x">ปิด</button><button class="btn danger" id="cn">ยกเลิกรายการนี้</button></div>',p=>{
-    p.querySelector("#x").addEventListener("click",close);
-    arm(p.querySelector("#cn"),"กดอีกครั้งเพื่อยืนยัน",()=>{close();Q("req/"+S.me+"/"+id,()=>db.doc("requests/"+S.me+"/items/"+id).update(r.status==="recorded"?{deleted:true}:{status:"cancelled"})).then(()=>toast("ยกเลิกแล้ว")).catch(fail)})});
+  const r=S.staff.mine.find(x=>x.id===id);if(!r||!canAsk(r))return;
+  minePopFor([r],esc(r.name),money(r.amount)+' บาท · ส่งเวลา '+hm(r.createdAt));
 }
 
 /* settings + PIN */
@@ -1129,6 +1162,21 @@ document.getElementById("view").addEventListener("keydown",e=>{
   if(t.id==="sq"){e.preventDefault();const first=document.querySelector('#view [data-act="spick"]');if(first)first.click();return}
   if(!t.classList.contains("amt")&&t.id!=="c-open"&&t.id!=="c-left")return;e.preventDefault();
   const all=[...document.querySelectorAll("#view input.amt, #c-open, #c-left")];const i=all.indexOf(t);if(all[i+1])all[i+1].focus();else t.blur();
+});
+/* กด Enter = ปุ่มหลัก (ปุ่มลบ/ยกเลิกรายการ ต้องแตะเองเท่านั้น) */
+document.addEventListener("keydown",e=>{
+  if(e.key!=="Enter"||e.repeat||e.isComposing||e.defaultPrevented||S.lock.locked)return;
+  const t=e.target;if(!t.isConnected||/^(BUTTON|TEXTAREA|A)$/.test(t.tagName))return;
+  const box=document.querySelector("#poproot .pop");
+  if(box){
+    if(t.id==="nn"||t.id==="np")return;                       // มีตัวจัดการ Enter ของตัวเองแล้ว
+    if(t.tagName==="INPUT"&&/q$/.test(t.id)){const row=box.querySelector(".prow:not(.new)")||box.querySelector(".prow");if(row){e.preventDefault();row.click()}return}
+    const b=box.querySelector("#done")||box.querySelector("#go")||box.querySelector(".acts .btn.primary")||box.querySelector(".btn.primary.block");
+    if(b&&!b.disabled){e.preventDefault();b.click()}return}
+  if(t.id==="s-note"){const b=document.querySelector('#view [data-act="send"]');if(b){e.preventDefault();t.blur();b.click()}return}
+  if(t.id==="s-free"){const a=document.getElementById("s-amt");if(a){e.preventDefault();a.focus()}return}
+  if(t.id==="dq"){const row=document.querySelector("#view .drow");if(row){e.preventDefault();row.click()}return}
+  if(t.id&&t.id.startsWith("n-")){e.preventDefault();t.blur()}
 });
 /* ===== เชื่อม Supabase (ฐานข้อมูล + ล็อกอิน) ===== */
 const SUPA_URL="https://jjcpsanmkhgyeoxispio.supabase.co",SUPA_KEY="sb_publishable_Ug4gELdR-QrBfHDEbak7IQ_X7S1qAlW";
