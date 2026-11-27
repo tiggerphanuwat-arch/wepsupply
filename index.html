@@ -477,37 +477,40 @@ function applyRole(){
 }
 window.addEventListener("hashchange",()=>{if(S.mode==="live")applyRole()});
 
-/* สแกนนิ้ว / Face ID: ล็อกหน้าแอปบนเครื่องนี้ ใช้ตัวสแกนของเครื่องผ่าน WebAuthn แอปไม่เห็นและไม่เก็บลายนิ้วมือ
-   การล็อกอินกับฐานข้อมูลยังเป็นรหัสผ่าน/PIN เดิม ถ้ากด "ออก" ต้องใส่รหัสใหม่ */
+/* สแกนนิ้ว / Face ID ด้วย Passkey ของ Supabase (ฟีเจอร์ทดลอง): ใช้ล็อกอินได้โดยไม่ต้องใส่รหัส และใช้ปลดล็อกแอปบนเครื่องที่เปิดไว้
+   เครื่องเป็นคนสแกน แอปและเซิร์ฟเวอร์ไม่เห็นลายนิ้วมือ · การล็อกอินด้วยรหัสผ่าน/PIN ยังใช้ได้เหมือนเดิม */
 let bioLocked=false;
-const bioKey=()=>"sj_bio_"+S.me;
+const bioKey=()=>"sj_pk_"+S.me;
 const bioGet=()=>{try{return localStorage.getItem(bioKey())}catch(e){return null}};
-const rand32=()=>crypto.getRandomValues(new Uint8Array(32));
-const b64=b=>btoa(String.fromCharCode(...new Uint8Array(b)));
-const unb64=t=>Uint8Array.from(atob(t),c=>c.charCodeAt(0));
-async function bioSupported(){try{return !!(window.PublicKeyCredential&&await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable())}catch(e){return false}}
+const bioSet=v=>{try{v==null?localStorage.removeItem(bioKey()):localStorage.setItem(bioKey(),v)}catch(e){}};
+async function bioSupported(){try{return !!(SB&&window.PublicKeyCredential&&await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable())}catch(e){return false}}
+const pkCancelled=e=>/NotAllowed|AbortError|cancel|abort|not allowed|timed out/i.test(((e&&e.name)||"")+" "+((e&&e.message)||""));
+const pkMsg=e=>pkCancelled(e)?"ยกเลิกการสแกน ลองอีกครั้ง":/credential_not_found/i.test((e&&(e.code||e.message))||"")?"ยังไม่ได้ลงทะเบียนสแกนนิ้วนี้ เข้าด้วยรหัสก่อน แล้วเปิดใช้สแกนนิ้ว":"สแกนไม่สำเร็จ ลองอีกครั้งหรือเข้าด้วยรหัส";
+async function passkeySignIn(){const r=await SB.cl.auth.signInWithPasskey();if(r.error)throw r.error;if(!r.data||!r.data.session)throw new Error("no session");return r.data}
 async function bioEnroll(){
-  const c=await navigator.credentials.create({publicKey:{challenge:rand32(),rp:{name:"สมุดจ่ายรายวัน"},user:{id:new TextEncoder().encode(S.me),name:S.myName||"สมุดจ่ายรายวัน",displayName:S.myName||"สมุดจ่ายรายวัน"},pubKeyCredParams:[{type:"public-key",alg:-7},{type:"public-key",alg:-257}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},timeout:60000,attestation:"none"}});
-  localStorage.setItem(bioKey(),b64(c.rawId))}
-async function bioVerify(){
-  const a=await navigator.credentials.get({publicKey:{challenge:rand32(),allowCredentials:[{type:"public-key",id:unb64(bioGet())}],userVerification:"required",timeout:60000}});
-  return !!(a&&(new Uint8Array(a.response.authenticatorData)[32]&4))}   // บิต "ยืนยันตัวผู้ใช้แล้ว"
+  const r=await SB.cl.auth.registerPasskey();
+  if(r.error){if(/credential_exists|already/i.test((r.error.code||"")+" "+r.error.message+" "+r.error.name)){bioSet("exists");return}throw r.error}
+  bioSet(r.data.id)}
+async function bioDisable(){
+  const id=bioGet();
+  if(id&&id!=="exists"){const r=await SB.cl.auth.passkey.delete({passkeyId:id});if(r.error&&!/not_found/i.test((r.error.code||"")+r.error.message))throw r.error}
+  bioSet(null)}
 function bioLock(){
   bioLocked=true;["app","stickyroot","poproot","lockroot"].forEach(i=>{const el=document.getElementById(i);if(el)el.inert=true});
   const r=document.getElementById("biolockroot");
   r.innerHTML='<div class="lock"><div class="lockin"><span class="mark" style="width:52px;height:52px;font-size:22px;border-radius:14px">฿</span><h2>สแกนนิ้วเพื่อเข้าใช้งาน</h2><div class="lockmsg" id="biomsg"></div><button class="btn primary block sendbtn" id="biogo">สแกนนิ้ว / Face ID</button><button class="btn sm" id="biopw">เข้าด้วยรหัสผ่านหรือ PIN แทน</button></div></div>';
   r.querySelector("#biogo").addEventListener("click",async()=>{const m=r.querySelector("#biomsg");m.textContent="";
-    try{if(!await bioVerify())throw new Error("not verified");bioUnlock()}catch(e){m.textContent="สแกนไม่สำเร็จ ลองอีกครั้ง"}});
-  r.querySelector("#biopw").addEventListener("click",()=>{try{localStorage.removeItem(bioKey())}catch(e){}logout()})}
+    try{const d=await passkeySignIn();if(d.user.id!==S.me){location.reload();return}bioUnlock()}catch(e){m.textContent=pkMsg(e)}});
+  r.querySelector("#biopw").addEventListener("click",()=>logout())}
 function bioUnlock(){bioLocked=false;["app","stickyroot","poproot","lockroot"].forEach(i=>{const el=document.getElementById(i);if(el)el.inert=false});
   document.getElementById("biolockroot").innerHTML="";unlockedOnce=true;if(S.lock.loaded)evalLock()}
 function bioSettings(){
   const on=!!bioGet();
-  pop('<h3>สแกนนิ้วเข้าแอป</h3><div>'+(on?"เปิดใช้บนเครื่องนี้แล้ว ครั้งต่อไปที่เปิดแอปจะให้สแกนนิ้ว":"เปิดแอปครั้งต่อไปด้วยการสแกนนิ้วหรือ Face ID ของเครื่องนี้")+'</div><div style="font-size:13px;color:var(--muted)">เปิดเฉพาะเครื่องของคุณเอง ใครที่ปลดล็อกเครื่องนี้ได้ (รวมถึงด้วยรหัสเครื่อง) จะเข้าแอปได้ · ถ้ากด “ออก” ต้องใส่รหัสผ่านหรือ PIN ใหม่ก่อน</div><div class="acts"><button class="btn" id="x">ปิด</button><button class="btn '+(on?"danger":"primary")+'" id="biotog">'+(on?"ปิดการสแกนนิ้ว":"เปิดใช้สแกนนิ้ว")+'</button></div>',p=>{
+  pop('<h3>สแกนนิ้วเข้าสู่ระบบ</h3><div>'+(on?"เปิดใช้แล้วบนเครื่องนี้":"ครั้งต่อไปเข้าสู่ระบบด้วยการสแกนนิ้วหรือ Face ID ได้ ไม่ต้องพิมพ์รหัส แม้กด “ออก” แล้ว")+'</div><div style="font-size:13px;color:var(--muted)">เปิดเฉพาะเครื่องของคุณเอง ใครที่ปลดล็อกเครื่องนี้ได้ (รวมถึงด้วยรหัสเครื่อง) จะเข้าบัญชีนี้ได้</div><div class="acts"><button class="btn" id="x">ปิด</button><button class="btn '+(on?"danger":"primary")+'" id="biotog">'+(on?"ปิดการสแกนนิ้ว":"เปิดใช้สแกนนิ้ว")+'</button></div>',p=>{
     p.querySelector("#x").addEventListener("click",close);
-    p.querySelector("#biotog").addEventListener("click",async()=>{
-      if(on){try{localStorage.removeItem(bioKey())}catch(e){}close();toast("ปิดการสแกนนิ้วแล้ว");return}
-      try{await bioEnroll();close();toast("เปิดใช้สแกนนิ้วแล้ว")}catch(e){toast("เปิดใช้ไม่สำเร็จ ลองอีกครั้ง")}})})}
+    p.querySelector("#biotog").addEventListener("click",async e=>{const b=e.currentTarget;b.disabled=true;
+      try{if(on){await bioDisable();close();toast("ปิดการสแกนนิ้วแล้ว")}else{await bioEnroll();close();toast("เปิดใช้สแกนนิ้วแล้ว")}}
+      catch(err){b.disabled=false;toast(on?"ปิดไม่สำเร็จ ลองอีกครั้ง":pkCancelled(err)?"ยกเลิกการสแกน":"เปิดใช้ไม่สำเร็จ ลองอีกครั้ง")}})})}
 function bioInit(){
   if(!unlockedOnce&&bioGet())bioLock();
   bioSupported().then(ok=>{document.getElementById("biobtn").hidden=!ok})}
@@ -1223,7 +1226,7 @@ document.addEventListener("keydown",e=>{
 const SUPA_URL="https://jjcpsanmkhgyeoxispio.supabase.co",SUPA_KEY="sb_publishable_Ug4gELdR-QrBfHDEbak7IQ_X7S1qAlW";
 const SB=(()=>{
   if(!window.supabase)return null;
-  const cl=window.supabase.createClient(SUPA_URL,SUPA_KEY,{auth:{persistSession:true,autoRefreshToken:true,storageKey:"sahai-auth"}});
+  const cl=window.supabase.createClient(SUPA_URL,SUPA_KEY,{auth:{persistSession:true,autoRefreshToken:true,storageKey:"sahai-auth",experimental:{passkey:true}}});
   const mkErr=e=>{const x=new Error((e&&e.message)||"error"),c=(e&&e.code)||"",m=(e&&e.message)||"";
     x.code=(c==="P0002"||c==="42501"||c==="PGRST116"||/row-level security|doc_not_found|permission denied/i.test(m))?"invalid_argument":(/fetch|network|load failed|timeout/i.test(m)?"unavailable":"error");return x};
   const split=p=>{const i=p.lastIndexOf("/");return{coll:p.slice(0,i),id:p.slice(i+1)}};
@@ -1295,6 +1298,7 @@ function showLogin(){
       f("lg-email","อีเมล","email",LG.email,'autocomplete="username" inputmode="email" autocapitalize="off"')+f("lg-pw","รหัสผ่าน","password",LG.pw,'autocomplete="current-password"'))+
     (LG.reg?f("lg-code",st?"รหัสเชิญร้าน (ขอจากเจ้าของ)":"รหัสเจ้าของร้าน","text",LG.code,'autocomplete="off" autocapitalize="characters"')+(st?'<div style="font-size:12px;color:var(--muted)">ครั้งแรกตั้งชื่อกับ PIN 4 หลักที่จำง่าย ครั้งต่อไปใช้ชื่อกับ PIN เดิมได้เลย ไม่ต้องใส่รหัสเชิญ</div>':''):'')+
     (LG.msg?'<div class="banner warn" style="margin:0">'+esc(LG.msg)+'</div>':'')+
+    (!LG.reg&&window.PublicKeyCredential&&SB?'<button type="button" class="btn block sendbtn" id="lg-pk"'+(LG.busy?' disabled':'')+'>สแกนนิ้ว / Face ID เข้าสู่ระบบ</button>':'')+
     '<button class="btn primary block sendbtn" id="lg-go"'+(LG.busy?' disabled':'')+'>'+(LG.busy?"กำลังเข้า…":(LG.reg?"ลงทะเบียนและเข้าใช้งาน":"เข้าใช้งาน"))+'</button>'+
     '<button class="btn sm" id="lg-reg" style="justify-self:center">'+(LG.reg?"กลับไปเข้าสู่ระบบ":(st?"ครั้งแรก? ลงทะเบียนด้วยรหัสเชิญร้าน":"ลงทะเบียนเจ้าของร้าน (ครั้งแรก)"))+'</button></div></div>';
   const bind=(id,k)=>{const e=document.getElementById(id);e&&e.addEventListener("input",()=>{LG[k]=e.value})};
@@ -1302,6 +1306,7 @@ function showLogin(){
   v.querySelectorAll("[data-lt]").forEach(b=>b.addEventListener("click",()=>{LG.tab=b.dataset.lt;LG.reg=false;LG.msg="";showLogin()}));
   document.getElementById("lg-reg").addEventListener("click",()=>{LG.reg=!LG.reg;LG.msg="";showLogin()});
   document.getElementById("lg-go").addEventListener("click",loginGo);
+  const pk=document.getElementById("lg-pk");pk&&pk.addEventListener("click",loginPasskey);
   v.querySelectorAll(".inp").forEach(i=>i.addEventListener("keydown",e=>{if(e.key==="Enter")loginGo()}));
 }
 async function loginGo(){
@@ -1317,6 +1322,13 @@ async function loginGo(){
     if(r.error)throw r.error;if(!r.data.session)throw new Error("ลงทะเบียนแล้วแต่ยังเข้าไม่ได้ ลองกด “กลับไปเข้าสู่ระบบ”");
     LG.busy=false;LG.pin="";LG.pw="";LG.code="";unlockedOnce=true;boot()}
   catch(e){LG.busy=false;LG.msg=authMsg(e);showLogin()}
+}
+
+async function loginPasskey(){
+  if(LG.busy)return;LG.busy=true;LG.msg="";
+  const b=document.getElementById("lg-pk");if(b)b.disabled=true;        // ไม่วาดหน้าใหม่ก่อนเรียกสแกน (Safari ต้องต่อเนื่องจากการแตะ)
+  try{await passkeySignIn();LG.busy=false;LG.pin="";LG.pw="";LG.code="";unlockedOnce=true;boot()}
+  catch(e){LG.busy=false;LG.msg=pkMsg(e);showLogin()}
 }
 
 boot();
