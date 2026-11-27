@@ -35,6 +35,7 @@ main{padding-left:max(14px,env(safe-area-inset-left,0px));padding-right:max(14px
 .headr{display:flex;align-items:center;gap:8px;margin-left:auto}
 .sync{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;white-space:nowrap}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--muted)} .dot.ok{background:var(--good)} .dot.warn{background:var(--warn)}
+#biolockroot .lock{z-index:90}
 .gear{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center}
 .gear svg{width:19px;height:19px}
 .banner{border-radius:12px;padding:10px 14px;font-size:13px;margin-bottom:10px;background:var(--accent-soft);color:var(--accent);display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
@@ -290,14 +291,14 @@ th{font-size:12px;color:var(--muted);font-weight:600;border-top:0}
 <div class="app" id="app">
   <nav class="rail" aria-label="เมนู"><div class="brand"><span class="mark">฿</span>สมุดจ่ายรายวัน</div><div id="railbtns"></div></nav>
   <main>
-    <div class="head"><div class="brand"><span class="mark">฿</span>สมุดจ่ายรายวัน</div><div class="headr"><div class="sync" id="sync"><span class="dot"></span>กำลังเชื่อมต่อ…</div><button class="btn sm" id="logout" hidden>ออก</button><button class="gear" id="gear" hidden aria-label="ตั้งค่า"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button></div></div>
+    <div class="head"><div class="brand"><span class="mark">฿</span>สมุดจ่ายรายวัน</div><div class="headr"><div class="sync" id="sync"><span class="dot"></span>กำลังเชื่อมต่อ…</div><button class="gear" id="biobtn" hidden aria-label="สแกนนิ้วเข้าแอป" title="สแกนนิ้วเข้าแอป"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M5 6.5A9 9 0 0 1 19 6.5M3.5 11a8.5 8.5 0 0 1 17 0c0 2-.2 3.5-.6 5M7 19c-1-2-1.5-4.500-1.500-7a6.500 6.500 0 0 1 13 0c0 3-.4 5.5-1.2 7.500M9.5 21c-1.2-2.600-1.500-5.500-1.500-9a4 4 0 0 1 8 0c0 4-.5 7-1.5 9.500M12 12c0 4-.2 6.800-1 9.500"/></svg></button><button class="btn sm" id="logout" hidden>ออก</button><button class="gear" id="gear" hidden aria-label="ตั้งค่า"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button></div></div>
     <div id="banner"></div>
     <section id="view"><div class="loading">กำลังโหลด…</div></section>
   </main>
   <div id="stickyroot"></div>
   <nav class="tabbar" aria-label="เมนู" id="tabbar" hidden></nav>
 </div>
-<div id="poproot"></div><div id="lockroot"></div><div id="toastroot"></div>
+<div id="poproot"></div><div id="lockroot"></div><div id="biolockroot"></div><div id="toastroot"></div>
 
 <script>
 (function(){
@@ -457,6 +458,7 @@ async function boot(){
   const prof=await SB.profile(ses.user.id);
   if(!prof){try{await SB.cl.auth.signOut()}catch(e){}LG.msg="บัญชีนี้ยังไม่ได้ลงทะเบียนกับร้าน";showLogin();return}
   db=SB.db;USER=SB.user;DL=SB.dl;S.mode="live";S.me=ses.user.id;S.isOwner=prof.role==="owner";S.myName=prof.name||"";
+  bioInit();
   startLive();
 }
 function startLive(){
@@ -475,12 +477,49 @@ function applyRole(){
 }
 window.addEventListener("hashchange",()=>{if(S.mode==="live")applyRole()});
 
+/* สแกนนิ้ว / Face ID: ล็อกหน้าแอปบนเครื่องนี้ ใช้ตัวสแกนของเครื่องผ่าน WebAuthn แอปไม่เห็นและไม่เก็บลายนิ้วมือ
+   การล็อกอินกับฐานข้อมูลยังเป็นรหัสผ่าน/PIN เดิม ถ้ากด "ออก" ต้องใส่รหัสใหม่ */
+let bioLocked=false;
+const bioKey=()=>"sj_bio_"+S.me;
+const bioGet=()=>{try{return localStorage.getItem(bioKey())}catch(e){return null}};
+const rand32=()=>crypto.getRandomValues(new Uint8Array(32));
+const b64=b=>btoa(String.fromCharCode(...new Uint8Array(b)));
+const unb64=t=>Uint8Array.from(atob(t),c=>c.charCodeAt(0));
+async function bioSupported(){try{return !!(window.PublicKeyCredential&&await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable())}catch(e){return false}}
+async function bioEnroll(){
+  const c=await navigator.credentials.create({publicKey:{challenge:rand32(),rp:{name:"สมุดจ่ายรายวัน"},user:{id:new TextEncoder().encode(S.me),name:S.myName||"สมุดจ่ายรายวัน",displayName:S.myName||"สมุดจ่ายรายวัน"},pubKeyCredParams:[{type:"public-key",alg:-7},{type:"public-key",alg:-257}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},timeout:60000,attestation:"none"}});
+  localStorage.setItem(bioKey(),b64(c.rawId))}
+async function bioVerify(){
+  const a=await navigator.credentials.get({publicKey:{challenge:rand32(),allowCredentials:[{type:"public-key",id:unb64(bioGet())}],userVerification:"required",timeout:60000}});
+  return !!(a&&(new Uint8Array(a.response.authenticatorData)[32]&4))}   // บิต "ยืนยันตัวผู้ใช้แล้ว"
+function bioLock(){
+  bioLocked=true;["app","stickyroot","poproot","lockroot"].forEach(i=>{const el=document.getElementById(i);if(el)el.inert=true});
+  const r=document.getElementById("biolockroot");
+  r.innerHTML='<div class="lock"><div class="lockin"><span class="mark" style="width:52px;height:52px;font-size:22px;border-radius:14px">฿</span><h2>สแกนนิ้วเพื่อเข้าใช้งาน</h2><div class="lockmsg" id="biomsg"></div><button class="btn primary block sendbtn" id="biogo">สแกนนิ้ว / Face ID</button><button class="btn sm" id="biopw">เข้าด้วยรหัสผ่านหรือ PIN แทน</button></div></div>';
+  r.querySelector("#biogo").addEventListener("click",async()=>{const m=r.querySelector("#biomsg");m.textContent="";
+    try{if(!await bioVerify())throw new Error("not verified");bioUnlock()}catch(e){m.textContent="สแกนไม่สำเร็จ ลองอีกครั้ง"}});
+  r.querySelector("#biopw").addEventListener("click",()=>{try{localStorage.removeItem(bioKey())}catch(e){}logout()})}
+function bioUnlock(){bioLocked=false;["app","stickyroot","poproot","lockroot"].forEach(i=>{const el=document.getElementById(i);if(el)el.inert=false});
+  document.getElementById("biolockroot").innerHTML="";unlockedOnce=true;if(S.lock.loaded)evalLock()}
+function bioSettings(){
+  const on=!!bioGet();
+  pop('<h3>สแกนนิ้วเข้าแอป</h3><div>'+(on?"เปิดใช้บนเครื่องนี้แล้ว ครั้งต่อไปที่เปิดแอปจะให้สแกนนิ้ว":"เปิดแอปครั้งต่อไปด้วยการสแกนนิ้วหรือ Face ID ของเครื่องนี้")+'</div><div style="font-size:13px;color:var(--muted)">เปิดเฉพาะเครื่องของคุณเอง ใครที่ปลดล็อกเครื่องนี้ได้ (รวมถึงด้วยรหัสเครื่อง) จะเข้าแอปได้ · ถ้ากด “ออก” ต้องใส่รหัสผ่านหรือ PIN ใหม่ก่อน</div><div class="acts"><button class="btn" id="x">ปิด</button><button class="btn '+(on?"danger":"primary")+'" id="biotog">'+(on?"ปิดการสแกนนิ้ว":"เปิดใช้สแกนนิ้ว")+'</button></div>',p=>{
+    p.querySelector("#x").addEventListener("click",close);
+    p.querySelector("#biotog").addEventListener("click",async()=>{
+      if(on){try{localStorage.removeItem(bioKey())}catch(e){}close();toast("ปิดการสแกนนิ้วแล้ว");return}
+      try{await bioEnroll();close();toast("เปิดใช้สแกนนิ้วแล้ว")}catch(e){toast("เปิดใช้ไม่สำเร็จ ลองอีกครั้ง")}})})}
+function bioInit(){
+  if(!unlockedOnce&&bioGet())bioLock();
+  bioSupported().then(ok=>{document.getElementById("biobtn").hidden=!ok})}
+document.getElementById("biobtn").addEventListener("click",()=>bioSettings());
+
 /* PIN lock */
 async function sha(s){try{const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(s));return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,"0")).join("")}catch(e){let h=0;for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))|0;return "w"+h}}
 const pinHash=(pin,salt)=>sha((salt||"")+":"+pin);
 let unlockedOnce=false,hiddenAt=0;
 function needHash(){return S.role==="owner"?S.lock.ownerHash:S.lock.staffHash}
 function evalLock(){const should=S.lock.enabled&&!!needHash()&&!unlockedOnce;if(should!==S.lock.locked){S.lock.locked=should;S.lock.entry=""}drawLock()}
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&hiddenAt&&Date.now()-hiddenAt>5*60000&&S.me&&bioGet()){unlockedOnce=false;bioLock()}});
 document.addEventListener("visibilitychange",()=>{if(document.hidden)hiddenAt=Date.now();else if(hiddenAt&&Date.now()-hiddenAt>5*60000&&S.lock.enabled&&needHash()){unlockedOnce=false;evalLock()}});
 function drawLock(msg){
   const r=document.getElementById("lockroot");
@@ -1165,7 +1204,7 @@ document.getElementById("view").addEventListener("keydown",e=>{
 });
 /* กด Enter = ปุ่มหลัก (ปุ่มลบ/ยกเลิกรายการ ต้องแตะเองเท่านั้น) */
 document.addEventListener("keydown",e=>{
-  if(e.key!=="Enter"||e.repeat||e.isComposing||e.defaultPrevented||S.lock.locked)return;
+  if(e.key!=="Enter"||e.repeat||e.isComposing||e.defaultPrevented||S.lock.locked||bioLocked)return;
   const t=e.target;if(!t.isConnected||/^(BUTTON|TEXTAREA|A)$/.test(t.tagName))return;
   const box=document.querySelector("#poproot .pop");
   if(box){
