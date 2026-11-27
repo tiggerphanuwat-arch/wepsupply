@@ -712,7 +712,7 @@ function vInbox(){
 /* ---- owner: daily sheet ---- */
 function rowHTML(g,id,name,e,isExtra){
   const amt=e&&e.amount!=null?e.amount:"";const note=e&&e.note||"";const open=S.openNotes[id]||note;const pm=e?payE(Object.assign({group:g},e)):defPay(g);
-  return '<div class="r"><div class="who"><button class="nm" data-act="'+(isExtra?"extra":"info")+'" data-id="'+id+'" data-g="'+g+'">'+esc(name)+'</button><button class="paytog'+(pm==="transfer"?" t":"")+'" data-act="paytog" data-id="'+id+'" data-g="'+g+'" data-name="'+esc(name)+'" data-p="'+pm+'" aria-label="วิธีจ่าย '+esc(name)+' ตอนนี้'+PAYL[pm]+' แตะเพื่อสลับ">'+PAYL[pm]+'</button>'+(OTHERG.includes(g)&&pm==="cash"?'<button class="paytog mk" data-act="mkttog" data-id="'+id+'" data-g="'+g+'" data-name="'+esc(name)+'" data-v="'+(e&&e.mkt?1:0)+'" aria-pressed="'+(!!(e&&e.mkt))+'" title="'+MKT_S+'">ใช้เงินตลาด</button>':'')+(g==="market"?'<button class="paytog mk" data-act="tilltog" data-id="'+id+'" data-g="'+g+'" data-name="'+esc(name)+'" data-v="'+(e&&e.till?1:0)+'" aria-pressed="'+(!!(e&&e.till))+'" title="'+TILL_S+'">เงินในเก๊ะ</button>':'')+(open?'':'<button class="notebtn" data-act="note" data-id="'+id+'" aria-label="เพิ่มหมายเหตุ" title="เพิ่มหมายเหตุ">'+IC.pen+'</button>')+'</div>'+
+  return '<div class="r"><div class="who"><button class="nm" data-act="'+(isExtra?"extra":"info")+'" data-id="'+id+'" data-g="'+g+'">'+esc(name)+'</button><button class="paytog'+(pm==="transfer"?" t":"")+'" data-act="paytog" data-id="'+id+'" data-g="'+g+'" data-name="'+esc(name)+'" data-p="'+pm+'" aria-label="วิธีจ่าย '+esc(name)+' ตอนนี้'+PAYL[pm]+' แตะเพื่อเลือกวิธีจ่าย">'+PAYL[pm]+'</button>'+(OTHERG.includes(g)&&pm==="cash"?'<button class="paytog mk" data-act="mkttog" data-id="'+id+'" data-g="'+g+'" data-name="'+esc(name)+'" data-v="'+(e&&e.mkt?1:0)+'" aria-pressed="'+(!!(e&&e.mkt))+'" title="'+MKT_S+'">ใช้เงินตลาด</button>':'')+(g==="market"?'<button class="paytog mk" data-act="tilltog" data-id="'+id+'" data-g="'+g+'" data-name="'+esc(name)+'" data-v="'+(e&&e.till?1:0)+'" aria-pressed="'+(!!(e&&e.till))+'" title="'+TILL_S+'">เงินในเก๊ะ</button>':'')+(open?'':'<button class="notebtn" data-act="note" data-id="'+id+'" aria-label="เพิ่มหมายเหตุ" title="เพิ่มหมายเหตุ">'+IC.pen+'</button>')+'</div>'+
     '<input class="amt num'+(amt!==""?" filled":"")+'" id="a-'+id+'" data-id="'+id+'" data-g="'+g+'" data-name="'+esc(name)+'" inputmode="decimal" enterkeyhint="next" placeholder="0" value="'+amt+'" aria-label="ราคา '+esc(name)+'">'+
     (open?'<div class="note"><input id="n-'+id+'" data-id="'+id+'" data-g="'+g+'" data-name="'+esc(name)+'" placeholder="หมายเหตุ" value="'+esc(note)+'"></div>':'')+'</div>';
 }
@@ -768,7 +768,7 @@ function splitEntPop(sp){
     arm(p.querySelector("#del"),"กดอีกครั้งเพื่อลบทั้งรายการ",()=>{close();const en={};ps.forEach(r=>en[r.id]={deleted:true});store.patchDay(S.date,{entries:en}).catch(fail)})})}
 function mergedRow(g,d,rs){
   return '<div class="r"><div class="who"><button class="nm" data-act="info" data-id="'+d.id+'" data-g="'+g+'">'+esc(d.name)+'</button></div><div class="samts">'+groupBySp(rs).map(it=>{if(it.parts.length>1){const ps=it.parts;return '<button class="samt" data-act="splitreq" data-sp="'+ps[0].sp+'"><span class="num">'+money(spSum(ps))+'</span><small>ใส่แล้ว · '+esc(who(ps[0].staff))+' · แบ่งจ่าย '+spLabel(ps)+'</small></button>'}const r=it.parts[0];const tr=payR(r)==="transfer";
-    return '<button class="samt" data-act="'+(tr?"pay":"staffcash")+'" data-staff="'+r.staff+'" data-id="'+r.id+'" aria-label="'+esc(d.name)+' ใส่แล้ว '+money(r.amount)+' บาท แตะเพื่อดูหรือแก้ไข"><span class="num">'+money(r.amount)+'</span><small>ใส่แล้ว · '+esc(who(r.staff))+' · '+(tr?(r.status==="paid"?"โอนแล้ว":"รอโอน"):"เงินสด")+(r.note?' · '+esc(r.note):'')+'</small></button>'}).join("")+'</div></div>'}
+    return '<button class="samt" data-act="'+(tr?"pay":"staffcash")+'" data-staff="'+r.staff+'" data-id="'+r.id+'" aria-label="'+esc(d.name)+' ใส่แล้ว '+money(r.amount)+' บาท แตะเพื่อดูหรือแก้ไข"><span class="num">'+money(r.amount)+'</span><small>ใส่แล้ว · '+esc(who(r.staff))+' · '+(tr?(r.status==="paid"?"โอนแล้ว":"รอโอน"):cashName(r))+(r.note?' · '+esc(r.note):'')+'</small></button>'}).join("")+'</div></div>'}
 function staffRows(g,skip){return groupBySp(reqsG(S.date,g).filter(r=>!(skip&&skip.has(r.id)))).map(it=>{if(it.parts.length>1)return splitRowHTML(it.parts,"splitreq");const r=it.parts[0];const tr=payR(r)==="transfer";return '<div class="req click" data-act="'+(tr?"pay":"staffcash")+'" data-staff="'+r.staff+'" data-id="'+r.id+'"><div class="nm">'+esc(r.name)+' <span class="tag">'+esc(who(r.staff))+'</span></div><div class="amtv num" style="font-size:16px">'+money(r.amount)+'</div>'+(r.note?'<div class="meta">'+esc(r.note)+'</div>':'')+(tr?statusPill(r):'<span class="pill info">'+cashName(r)+(r.mkt?' · ใช้เงินตลาด':'')+'</span>')+'</div>'}).join("")}
 function cashSec(g,t){
   const E=(S.day&&S.day.entries)||{};const list=GROUPS[g].named?dirBy(g):[];
@@ -892,7 +892,7 @@ function payPop(staff,id){
   let qr;
   if(svg)qr='<div class="qrcard"><div class="pp">THAI QR PAYMENT · พร้อมเพย์</div>'+svg+'<div class="qamt num">฿'+money(r.amount)+'</div><div class="qto">'+esc(d.holder||d.name||r.name)+'<br>พร้อมเพย์ '+esc(d.promptpay)+'</div></div><div style="font-size:13px;color:var(--muted);text-align:center">สแกนด้วยแอปธนาคาร ยอดเงินจะขึ้นให้เอง'+(DL?' · บนมือถือกด “บันทึกรูป QR” แล้วสแกนจากรูปในแอปธนาคาร':'')+'</div>'+(DL?'<button class="btn" id="saveqr">บันทึกรูป QR</button>':'');
   else if(payload)qr='<div class="empty" style="padding:0">สร้าง QR ไม่ได้ตอนนี้ ใช้เลขบัญชีด้านล่างแทน</div>';
-  else qr=isNew?'':'<div class="banner warn" style="margin:0">ยังไม่มีพร้อมเพย์ของ '+esc(r.name)+' เลยสร้าง QR ไม่ได้ <button class="btn sm" id="addpp">เพิ่มพร้อมเพย์</button></div>';
+  else qr=isNew||!hasList(gOf(r))?'':'<div class="banner warn" style="margin:0">ยังไม่มีพร้อมเพย์ของ '+esc(r.name)+' เลยสร้าง QR ไม่ได้ <button class="btn sm" id="addpp">เพิ่มพร้อมเพย์</button></div>';
   const newBox=isNew?'<div class="banner" style="margin:0;display:grid;gap:8px"><b>'+(gOf(r)==="sup"?"ซัพใหม่":"รายการใหม่")+'จาก'+esc(who(r.staff))+'</b><span>ชื่อนี้ยังไม่อยู่ในรายชื่อ ถ้าไม่เพิ่ม จะใช้ได้แค่วันนี้วันเดียว</span><button class="btn primary sm" id="addnew">เพิ่ม “'+esc(r.name)+'” เข้ารายชื่อ</button></div>':'';
   const acc=d.account?'<div class="info"><div class="it"><div class="k">'+esc(d.bank||"เลขบัญชี")+(d.holder?' · '+esc(d.holder):'')+'</div><div class="v num">'+esc(d.account)+'</div><button class="cp" data-copy="'+esc(d.account.replace(/\D/g,"")||d.account)+'">คัดลอก</button></div></div>':'';
   pop('<h3>'+esc(r.name)+'</h3><div class="popsub">ส่งโดย '+esc(who(r.staff))+' · '+esc(thDs(r.date))+' '+hm(r.createdAt)+(r.note?' · '+esc(r.note):'')+'</div>'+newBox+
@@ -932,7 +932,8 @@ function rejectPop(staff,id){
 }
 function staffCashPop(staff,id){
   const r=(S.reqs[staff]||[]).find(x=>x.id===id);if(!r)return;
-  pop('<h3>'+esc(r.name)+'</h3><div class="popsub">'+esc(GROUPS[gOf(r)].t)+' · เงินสด · ลงโดย '+esc(who(r.staff))+' '+hm(r.createdAt)+'</div><div class="fld"><label for="sc-a">ยอด (บาท)</label><input class="inp num" id="sc-a" inputmode="decimal" value="'+r.amount+'"></div><div class="fld"><label for="sc-n">หมายเหตุ</label><input class="inp" id="sc-n" value="'+esc(r.note||"")+'"></div>'+(OTHERG.includes(gOf(r))?'<div id="sc-mk">'+chk("scmk",r.mkt,MKT_L,MKT_S)+'</div>':'')+(gOf(r)==="market"?'<div id="sc-till">'+chk("sctill",r.till,TILL_L,TILL_S)+'</div>':'')+'<button class="btn sm" id="totr" style="justify-self:center">เปลี่ยนเป็น “โอนจ่าย”</button><div class="acts"><button class="btn danger" id="del">ลบ</button><button class="btn primary" id="sv">บันทึก</button></div>',p=>{
+  pop('<h3>'+esc(r.name)+'</h3><div class="popsub">'+esc(GROUPS[gOf(r)].t)+' · เงินสด · ลงโดย '+esc(who(r.staff))+' '+hm(r.createdAt)+'</div><div class="fld"><label for="sc-a">ยอด (บาท)</label><input class="inp num" id="sc-a" inputmode="decimal" value="'+r.amount+'"></div><div class="fld"><label for="sc-n">หมายเหตุ</label><input class="inp" id="sc-n" value="'+esc(r.note||"")+'"></div>'+(OTHERG.includes(gOf(r))?'<div id="sc-mk">'+chk("scmk",r.mkt,MKT_L,MKT_S)+'</div>':'')+(gOf(r)==="market"?'<div id="sc-till">'+chk("sctill",r.till,TILL_L,TILL_S)+'</div>':'')+'<button class="btn sm" id="towait" style="justify-self:center">เปลี่ยนเป็น “รอโอน”</button><button class="btn sm" id="totr" style="justify-self:center">เปลี่ยนเป็น “โอนจ่าย”</button><div class="acts"><button class="btn danger" id="del">ลบ</button><button class="btn primary" id="sv">บันทึก</button></div>',p=>{
+    p.querySelector("#towait").addEventListener("click",()=>{close();store.updReq(staff,id,Object.assign({kind:"transfer",status:"pending",paidAt:null},r.till?{till:false}:{},r.mkt?{mkt:false}:{})).then(()=>toast("ย้ายไป “รอโอน” แล้ว")).catch(fail)});
     p.querySelector("#totr").addEventListener("click",()=>{close();store.updReq(staff,id,Object.assign({kind:"transfer",status:"paid",paidAt:Date.now()},r.till?{till:false}:{})).then(()=>toast("เปลี่ยนเป็นโอนจ่ายแล้ว")).catch(fail)});
     let till=!!r.till;const tb=p.querySelector("#sc-till button");tb&&tb.addEventListener("click",()=>{till=!till;tb.setAttribute("aria-pressed",String(till))});
     let mk=!!r.mkt;const mb=p.querySelector("#sc-mk button");mb&&mb.addEventListener("click",()=>{mk=!mk;mb.setAttribute("aria-pressed",String(mk))});
@@ -940,12 +941,14 @@ function staffCashPop(staff,id){
     arm(p.querySelector("#del"),"กดอีกครั้งเพื่อลบ",()=>{close();store.updReq(staff,id,{deleted:true}).then(()=>toast("ลบแล้ว")).catch(fail)})});
 }
 /* owner: add a supplier amount with the same picker as staff */
-function ownAddPop(){
-  popCtx={sel:null,q:"",sort:S.staff.sort,pay:"transfer",split:false,st:"done"};
+function ownAddPop(g){
+  g=GROUPS[g]?g:"sup";const listed=hasList(g),other=OTHERG.includes(g);
+  popCtx={sel:null,q:"",free:"",sort:S.staff.sort,pay:defPay(g),split:false,st:"done",till:false,mkt:false};
   const draw=()=>{const c=popCtx;if(!c)return;const amtV=(document.getElementById("o-a")||{}).value||"",noteV=(document.getElementById("o-note")||{}).value||"",amt2V=(document.getElementById("o-a2")||{}).value||"";
-    const newToday=[...new Set(reqsG(S.date,"sup").filter(r=>r.newName&&!r.supId).map(r=>r.name))];
-    const body='<h3>ใส่ยอดซัพเอง</h3><div class="popsub">'+esc(thD(S.date))+'</div><div id="o-pick" style="display:grid;gap:10px">'+pickerHTML({names:dirBy("sup"),sel:c.sel,q:c.q,sort:c.sort,newToday,newLabel:"ซัพใหม่ ที่ไม่มีในรายชื่อ",idp:"o"})+'</div>'+
-      '<div class="fld">'+(c.split?'':'<span class="lbl">จ่ายด้วย</span><div id="o-pay">'+payBtns("opay",c.pay,true)+'</div>')+'<div id="o-split">'+chk("osplit",c.split,"แบ่งจ่าย: เงินสดส่วนหนึ่ง + โอนส่วนหนึ่ง","เช่น เงินสด 3,000 และโอน 199.89")+'</div></div>'+
+    const newToday=[...new Set(reqsG(S.date,g).filter(r=>r.newName&&!r.supId).map(r=>r.name))];
+    const extraTick=(c.pay!=="cash"&&!c.split)?'':(g==="market"?'<div id="o-till">'+chk("otill",c.till,TILL_L,TILL_S)+'</div>':other?'<div id="o-mk">'+chk("omkt",c.mkt,MKT_L,MKT_S)+'</div>':'');
+    const body='<h3>'+(g==="sup"?"ใส่ยอดซัพเอง":"ใส่ยอด · "+GROUPS[g].t)+'</h3><div class="popsub">'+esc(thD(S.date))+'</div><div id="o-pick" style="display:grid;gap:10px">'+(listed?pickerHTML({names:dirBy(g),sel:c.sel,q:c.q,sort:c.sort,newToday,newLabel:g==="sup"?"ซัพใหม่ ที่ไม่มีในรายชื่อ":"ชื่อใหม่ ที่ไม่มีในรายชื่อ",idp:"o"}):'<div class="fld"><label for="o-free">ชื่อรายการ</label><input class="inp" id="o-free" value="'+esc(c.free)+'"></div>')+'</div>'+
+      '<div class="fld">'+(c.split?'':'<span class="lbl">จ่ายด้วย</span><div id="o-pay">'+payBtns("opay",c.pay,true)+'</div>')+'<div id="o-split">'+chk("osplit",c.split,"แบ่งจ่าย: เงินสดส่วนหนึ่ง + โอนส่วนหนึ่ง","เช่น เงินสด 3,000 และโอน 199.89")+'</div></div>'+extraTick+
       (c.split?'<div class="fld"><label for="o-a">เงินสด (บาท)</label><input class="inp bigamt num" id="o-a" inputmode="decimal" placeholder="0.00" value="'+esc(amtV)+'"></div><div class="fld"><label for="o-a2">โอน (บาท)</label><input class="inp bigamt num" id="o-a2" inputmode="decimal" placeholder="0.00" value="'+esc(amt2V)+'"></div><div class="fld" id="o-st"><span class="lbl">ส่วนที่โอน</span><div class="paypick"><button type="button" data-p="done" aria-pressed="'+(c.st==="done")+'">โอนจ่ายแล้ว<small>โอนไปแล้ว</small></button><button type="button" data-p="transfer" aria-pressed="'+(c.st==="transfer")+'">รอโอน<small>รอเจ้าของโอนให้</small></button></div></div>':
         '<div class="fld"><label for="o-a">ยอด (บาท)</label><input class="inp bigamt num" id="o-a" inputmode="decimal" placeholder="0.00" value="'+esc(amtV)+'"></div>')+'<div class="fld"><label for="o-note">หมายเหตุ</label><input class="inp" id="o-note" value="'+esc(noteV)+'"></div><div class="acts"><button class="btn" id="x">ยกเลิก</button><button class="btn primary" id="sv">'+(c.split?"บันทึกแบ่งจ่าย":c.pay==="transfer"?"เพิ่มเข้ารอโอน":c.pay==="done"?"บันทึกโอนจ่าย":"บันทึกเงินสด")+'</button></div>';
     const ae=document.activeElement;const keepQ=ae&&ae.id==="oq";
@@ -953,6 +956,9 @@ function ownAddPop(){
     if(keepQ){const q=document.getElementById("oq");if(q){q.focus();q.setSelectionRange(q.value.length,q.value.length)}}};
   const mount=p=>{
     p.querySelector("#x").addEventListener("click",close);
+    const fr=p.querySelector("#o-free");fr&&fr.addEventListener("input",()=>{popCtx.free=fr.value});
+    const tk=p.querySelector("#o-till button");tk&&tk.addEventListener("click",()=>{popCtx.till=!popCtx.till;draw()});
+    const mb=p.querySelector("#o-mk button");mb&&mb.addEventListener("click",()=>{popCtx.mkt=!popCtx.mkt;draw()});
     const q=p.querySelector("#oq");q&&q.addEventListener("input",()=>{popCtx.q=q.value;draw()});
     const op=p.querySelector("#o-pay");op&&op.addEventListener("click",e=>{const b=e.target.closest("[data-p]");if(!b)return;popCtx.pay=b.dataset.p;draw()});
     p.querySelector("#o-split").addEventListener("click",e=>{if(!e.target.closest("button"))return;popCtx.split=!popCtx.split;draw()});
@@ -964,17 +970,31 @@ function ownAddPop(){
       else if(a==="ounpick")popCtx.sel=null;
       else if(a==="osort"){popCtx.sort=el.dataset.s;S.staff.sort=el.dataset.s;try{localStorage.setItem("sj3_sort",el.dataset.s)}catch(x){}}
       draw();if(popCtx&&popCtx.sel){const a2=document.getElementById("o-a");a2&&a2.focus()}});
-    p.querySelector("#sv").addEventListener("click",()=>{const c=popCtx;const a=num(p.querySelector("#o-a").value);if(!c.sel){toast("เลือกซัพก่อน");return}if(a==null||a<=0){toast("ใส่ยอดก่อน");return}
+    p.querySelector("#sv").addEventListener("click",()=>{const c=popCtx;const a=num(p.querySelector("#o-a").value);const sel=listed?c.sel:(c.free.trim()?{id:null,name:c.free.trim()}:null);
+      if(!sel){toast(g==="sup"?"เลือกซัพก่อน":listed?"เลือกรายการก่อน":"ใส่ชื่อรายการก่อน");return}if(a==null||a<=0){toast("ใส่ยอดก่อน");return}
       if(c.split){const a2=num(p.querySelector("#o-a2").value);if(a2==null||a2<=0){toast("ใส่ยอดที่โอนด้วย");return}
-        const sp=uid();const base={group:"sup",date:S.date,supId:c.sel.id||null,name:c.sel.name,note:p.querySelector("#o-note").value.trim()};
-        const b1=reqBody("cash",Object.assign({amount:a,sp,createdAt:Date.now()},base));const b2=reqBody(c.st,Object.assign({amount:a2,sp,createdAt:Date.now()+1},base));delete b1.selfPaid;delete b2.selfPaid;
-        if(c.sel.isNew){b1.newName=true;b2.newName=true}
+        const sp=uid();const base={group:g,date:S.date,supId:sel.id||null,name:sel.name,note:p.querySelector("#o-note").value.trim()};
+        const b1=reqBody("cash",Object.assign({amount:a,sp,createdAt:Date.now()},base,g==="market"?{till:c.till}:{},other?{mkt:c.mkt}:{}));const b2=reqBody(c.st,Object.assign({amount:a2,sp,createdAt:Date.now()+1},base));delete b1.selfPaid;delete b2.selfPaid;
+        if(sel.isNew){b1.newName=true;b2.newName=true}
         close();store.sendReq(b1).then(()=>store.sendReq(b2)).then(()=>toast("บันทึกแบ่งจ่ายแล้ว")).catch(fail);return}
-      const body=reqBody(c.pay,{group:"sup",date:S.date,supId:c.sel.id||null,name:c.sel.name,amount:a,note:p.querySelector("#o-note").value.trim(),createdAt:Date.now()});if(c.pay==="done")delete body.selfPaid;if(c.sel.isNew)body.newName=true;
+      const body=reqBody(c.pay,{group:g,date:S.date,supId:sel.id||null,name:sel.name,amount:a,note:p.querySelector("#o-note").value.trim(),createdAt:Date.now()});if(c.pay==="done")delete body.selfPaid;if(sel.isNew)body.newName=true;if(c.pay==="cash"){if(g==="market")body.till=c.till;if(other)body.mkt=c.mkt}
       close();store.sendReq(body).then(()=>toast(c.pay==="transfer"?"เพิ่มเข้ารอโอนแล้ว":c.pay==="done"?"บันทึกโอนจ่ายแล้ว":"บันทึกเงินสดแล้ว")).catch(fail)});
   };
   draw();
 }
+function rowPayPop(id,g,name){
+  const date=S.date,e=((S.day&&S.day.entries)||{})[id]||{};const cur=payE(Object.assign({group:g},e))==="transfer"?"done":"cash";
+  pop('<h3>'+esc(name)+'</h3><div class="popsub">'+(e.amount!=null?money(e.amount)+' บาท · ':'')+'จ่ายด้วยอะไร</div><div id="rp">'+payBtns("rpay",cur,true)+'</div><button class="btn block" id="x">ปิด</button>',p=>{
+    p.querySelector("#x").addEventListener("click",close);
+    p.querySelector("#rp").addEventListener("click",ev=>{const b=ev.target.closest("[data-p]");if(!b)return;const v=b.dataset.p;
+      if(v!=="transfer"){close();store.patchDay(date,{entries:{[id]:Object.assign({name,group:g,pay:v==="done"?"transfer":"cash"},v==="done"&&g==="market"?{till:false}:{},v==="done"&&OTHERG.includes(g)?{mkt:false}:{})}}).catch(fail);return}
+      if(!(e.amount>0)){toast("ใส่ยอดก่อน แล้วค่อยเลือกรอโอน");return}
+      // รอโอน: ย้ายเป็นรายการในหน้า "รอโอน" (มี QR และสถานะ) แล้วเอายอดออกจากแถวเดิม กันนับซ้ำ
+      const d=S.dir.find(x=>x.id===id)||S.dir.find(x=>x.name===name&&x.group===g);
+      b.disabled=true;close();
+      store.sendReq(reqBody("transfer",{group:g,date,supId:d?d.id:null,name,amount:e.amount,note:e.note||"",createdAt:Date.now()}))
+        .then(()=>store.patchDay(date,{entries:{[id]:id.startsWith("x_")?{deleted:true}:{amount:null,note:"",till:false,mkt:false}}}))
+        .then(()=>toast("ย้ายไป “รอโอน” แล้ว")).catch(fail)})})}
 function newNamePop(done,back){
   pop('<h3>ชื่อใหม่</h3><div class="fld"><label for="nn">ชื่อ</label><input class="inp" id="nn" placeholder="พิมพ์ชื่อ"></div><div class="acts"><button class="btn" id="x">กลับ</button><button class="btn primary" id="ok">ใช้ชื่อนี้</button></div>',p=>{
     setTimeout(()=>p.querySelector("#nn").focus(),60);p.querySelector("#x").addEventListener("click",()=>{back?back():close()});
@@ -1195,9 +1215,9 @@ function onClick(e){
   else if(a==="mprev")setMonth(addM(S.month,-1));else if(a==="mnext")setMonth(addM(S.month,1));
   else if(a==="info")infoPop(id);
   else if(a==="extra")extraPop(el.dataset.g,id);
-  else if(a==="addx")extraPop(el.dataset.g);
+  else if(a==="addx")ownAddPop(el.dataset.g);
   else if(a==="staffcash")staffCashPop(el.dataset.staff,id);
-  else if(a==="ownadd")ownAddPop();
+  else if(a==="ownadd")ownAddPop(el.dataset.g);
   else if(a==="note"){S.openNotes[id]=true;render();const n=document.getElementById("n-"+id);n&&n.focus()}
   else if(a==="dnew")editPop(null);
   else if(a==="cat"){S.cat=S.cat===el.dataset.g?null:el.dataset.g;render()}else if(a==="goto"){S.tab="day";setDate(el.dataset.date);window.scrollTo(0,0)}
@@ -1214,7 +1234,7 @@ function onClick(e){
   else if(a==="ssplit"){st.split=!st.split;render()}
   else if(a==="sst"){st.stT=el.dataset.p;render()}
   else if(a==="tilltog"){const on=el.dataset.v!=="1";store.patchDay(S.date,{entries:{[id]:Object.assign({name:el.dataset.name,group:el.dataset.g,till:on},on?{pay:"cash"}:{})}}).catch(fail)}
-  else if(a==="paytog"){const np=el.dataset.p==="transfer"?"cash":"transfer";store.patchDay(S.date,{entries:{[id]:Object.assign({name:el.dataset.name,group:el.dataset.g,pay:np},np==="transfer"&&el.dataset.g==="market"?{till:false}:{})}}).catch(fail)}
+  else if(a==="paytog")rowPayPop(id,el.dataset.g,el.dataset.name);
   else if(a==="sgroup"){st.group=el.dataset.g;st.pay=defPay(st.group);st.mkt=false;st.till=false;st.split=false;st.amt2="";st.stT="done";st.sel=null;st.q="";st.newName="";render()}
   else if(a==="spick"){const n=S.names.find(x=>x.id===id);if(n){st.sel={id:n.id,name:n.name};render();const am=document.getElementById("s-amt");am&&am.focus()}}
   else if(a==="spicktemp"){st.sel={id:null,name:el.dataset.name,isNew:true};render();const am=document.getElementById("s-amt");am&&am.focus()}
