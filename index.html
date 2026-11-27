@@ -389,7 +389,7 @@ function ppPayload(id,amount){const t=ppTarget(id);if(!t)return null;
 function qrSvg(text){try{if(typeof qrcode!=="function")return null;const q=qrcode(0,"M");q.addData(text);q.make();return q.createSvgTag({cellSize:6,margin:2,scalable:true})}catch(e){return null}}
 
 /* state */
-const S={role:null,isOwner:false,tab:"inbox",date:today(),month:today().slice(0,7),dir:[],names:[],day:null,mdays:[],reqs:{},mode:"loading",q:"",openNotes:{},dirLoaded:false,me:null,people:{},
+const S={edits:[],editsToday:[],role:null,isOwner:false,tab:"inbox",date:today(),month:today().slice(0,7),dir:[],names:[],day:null,mdays:[],reqs:{},mode:"loading",q:"",openNotes:{},dirLoaded:false,me:null,people:{},
   lock:{enabled:false,staffHash:null,salt:null,ownerHash:null,locked:false,entry:"",fails:0,until:0,loaded:false},
   staff:{group:"sup",pay:"transfer",mkt:false,split:false,amt2:"",stT:"done",sel:null,q:"",sort:"order",amt:"",note:"",newName:"",mine:[]}};
 try{const t=localStorage.getItem("sj3_tab");if(TABS.some(x=>x[0]===t))S.tab=t;const so=localStorage.getItem("sj3_sort");if(so==="az"||so==="order")S.staff.sort=so}catch(e){}
@@ -397,18 +397,58 @@ try{const t=localStorage.getItem("sj3_tab");if(TABS.some(x=>x[0]===t))S.tab=t;co
 /* store */
 let db=null,USER=null,DL=null;const un={},qs={};
 const Q=(k,f)=>(qs[k]=(qs[k]||Promise.resolve()).catch(()=>{}).then(f));
+/* ประวัติการแก้ไขข้อมูลย้อนหลัง: เก็บว่าใครแก้อะไร เมื่อไร จากค่าเดิมเป็นค่าใหม่ (แอปไม่มีปุ่มลบประวัติ) */
+const showAmt=v=>v==null||v===""?"ว่าง":money(v);
+const payName=v=>v==="cash"?"เงินสด":v==="transfer"?"โอน":"ว่าง";
+const FIELD={amount:["ยอด",showAmt],name:["ชื่อ",v=>v||"ว่าง"],note:["หมายเหตุ",v=>v||"ว่าง"],group:["หมวด",v=>(GROUPS[v]||{}).t||"ว่าง"],pay:["วิธีจ่าย",payName],kind:["วิธีจ่าย",payName],mkt:["ใช้เงินตลาด",v=>v?"ใช่":"ไม่ใช่"]};
+const diffFields=(old,patch)=>Object.keys(FIELD).filter(k=>k in patch&&(patch[k]||"")!==(old[k]||"")).map(k=>FIELD[k][0]+" "+FIELD[k][1](old[k])+" → "+FIELD[k][1](patch[k]));
+function reqChanges(old,patch){
+  const out=diffFields(Object.assign({},old,{kind:payR(old)}),patch);
+  if(patch.deleted&&!old.deleted)out.push("ลบรายการ ยอด "+money(old.amount));
+  if(patch.status&&patch.status!==old.status){
+    if(patch.status==="cancelled")out.push("ยกเลิกรายการ ยอด "+money(old.amount));
+    else if(patch.status==="rejected")out.push("ส่งรายการกลับ ยอด "+money(old.amount));
+    else if(patch.status==="pending"&&old.status==="paid")out.push("ยกเลิกสถานะโอนแล้ว")}   // การกด "โอนแล้ว" ตามปกติ ไม่นับเป็นการแก้ไข
+  return out.length?[{name:old.name,what:out.join(" · ")}]:[]}
+function dayChanges(day,patch){
+  const out=[],c=(day&&day.cash)||{};
+  for(const k in patch.cash||{})if((patch.cash[k]??null)!==(c[k]??null))out.push({name:k==="opening"?"เงินตั้งต้น":"เงินที่เหลือ",what:showAmt(c[k])+" → "+showAmt(patch.cash[k])});
+  for(const id in patch.entries||{}){const n=patch.entries[id],o=((day&&day.entries)||{})[id];
+    if(!o){const bits=[n.amount!=null?"ยอด "+money(n.amount):"",n.note?"หมายเหตุ "+n.note:""].filter(Boolean);if(bits.length)out.push({name:n.name,what:"เพิ่มรายการ "+bits.join(" · ")});continue}
+    const w=n.deleted?["ลบรายการ ยอด "+showAmt(o.amount)]:diffFields(Object.assign({},o,{pay:payE(o),name:o.name||n.name,group:o.group||n.group}),n);
+    if(w.length)out.push({name:o.name||n.name,what:w.join(" · ")})}
+  return out}
+function logEdits(date,list){
+  if(!list.length)return;const at=Date.now(),by=S.me,byName=S.myName||"เจ้าของร้าน";
+  Promise.all(list.map(x=>db.doc("edits/"+uid()).set({at,by,byName,date,madeOn:today(),name:x.name||"",what:x.what}))).catch(()=>toast("แก้ข้อมูลแล้ว แต่บันทึกประวัติการแก้ไขไม่สำเร็จ"))}
+const editList=l=>l.slice().sort((a,b)=>b.at-a.at).map(e=>'<div class="it"><div class="k">'+esc(thDs(ymd(new Date(e.at))))+' '+hm(e.at)+' · โดย '+esc(e.byName)+' · ข้อมูลวันที่ '+esc(thDs(e.date))+'</div><div class="v">'+esc(e.name)+'</div><div class="k" style="font-size:14px;color:var(--ink)">'+esc(e.what)+'</div></div>').join("");
+function editBanner(){
+  if(S.role!=="owner")return"";let h="";
+  const mk=(kind,l,text)=>l.length?'<div class="banner warn"><span><b>⚠ '+text+' '+l.length+' ครั้ง</b></span><button class="btn sm" data-edits="'+kind+'">ดูว่าแก้อะไร</button></div>':'';
+  h+=mk("today",S.editsToday,"วันนี้มีการแก้ไขข้อมูลย้อนหลัง");
+  if(S.tab==="day")h+=mk("day",S.edits.filter(e=>e.date===S.date),"ข้อมูลของวันที่เลือกนี้ถูกแก้ไขย้อนหลัง");
+  if(S.tab==="sum")h+=mk("month",S.edits,"ข้อมูลเดือนนี้ถูกแก้ไขย้อนหลัง");
+  return h}
+function editsPop(kind){
+  const l=kind==="today"?S.editsToday:kind==="day"?S.edits.filter(e=>e.date===S.date):S.edits;
+  pop('<h3>ประวัติการแก้ไข</h3><div class="info">'+editList(l)+'</div><button class="btn primary block" id="x">ปิด</button>',p=>p.querySelector("#x").addEventListener("click",close))}
+
 const store={
   patchDay(date,patch){
+    const log=S.role==="owner"&&date<today()?dayChanges(S.day&&date===S.date?S.day:null,patch):[];
     return Q("days/"+date,async()=>{const ref=db.doc("days/"+date);
       try{await ref.update(patch)}catch(e){
         if(e&&e.code==="invalid_argument"){const s=await ref.get();if(s.exists)throw e;await ref.set(Object.assign({date},patch))}
-        else if(e&&e.code==="unavailable"){await new Promise(r=>setTimeout(r,500+Math.random()*600));await ref.update(patch)}else throw e}});
+        else if(e&&e.code==="unavailable"){await new Promise(r=>setTimeout(r,500+Math.random()*600));await ref.update(patch)}else throw e}}).then(()=>logEdits(date,log));
   },
   saveDir(id,body){return Q("dir/"+id,()=>db.doc("dir/"+id).set(body))},
   delDir(id){return Q("dir/"+id,()=>db.doc("dir/"+id).delete())},
   saveNames(list){return Q("public/names",()=>db.doc("public/names").set({items:list,at:Date.now()}))},
-  sendReq(body){const me=S.me;return Q("requests/"+me,async()=>{await db.doc("requests/"+me).set({lastAt:Date.now()});await db.collection("requests/"+me+"/items").doc(uid()).set(Object.assign({by:me},body))})},
-  updReq(staff,id,patch){return Q("req/"+staff+"/"+id,()=>db.doc("requests/"+staff+"/items/"+id).update(patch))},
+  sendReq(body){const me=S.me;const log=S.role==="owner"&&body.date<today()?[{name:body.name,what:"เพิ่มรายการ ยอด "+money(body.amount)}]:[];return Q("requests/"+me,async()=>{await db.doc("requests/"+me).set({lastAt:Date.now()});await db.collection("requests/"+me+"/items").doc(uid()).set(Object.assign({by:me},body))}).then(()=>logEdits(body.date,log))},
+  updReq(staff,id,patch){
+    const old=(S.reqs[staff]||[]).find(x=>x.id===id);const date=old&&old.date;
+    const log=S.role==="owner"&&old&&date<today()?reqChanges(old,patch):[];
+    return Q("req/"+staff+"/"+id,()=>db.doc("requests/"+staff+"/items/"+id).update(patch)).then(()=>logEdits(date,log))},
   setLockPublic(data){return Q("public/lock",()=>db.doc("public/lock").set(data))},
   setLockOwner(data){return Q("settings/lock",()=>db.doc("settings/lock").set(data))}
 };
@@ -423,6 +463,7 @@ let staffSubs={};
 function subOwner(){
   un.dir=db.collection("dir").onSnapshot(q=>{S.dir=q.docs.map(d=>Object.assign({id:d.id},d.data()));if(!q.metadata.fromCache){S.dirLoaded=true;ok()}render()},err);
   un.staff=db.collection("requests").onSnapshot(q=>{q.docs.forEach(d=>subStaff(d.id));if(!q.metadata.fromCache)ok()},err);
+  un.edt=db.collection("edits").where("madeOn","==",today()).onSnapshot(q=>{S.editsToday=q.docs.map(d=>d.data());render()},err);
   subDay();subMonth();
 }
 function subStaff(sid){
@@ -434,7 +475,7 @@ function subStaff(sid){
   staffSubs[sid].sub();
 }
 function subDay(){un.day&&un.day();un.day=db.doc("days/"+S.date).onSnapshot(s=>{S.day=s.exists?s.data():null;if(!s.metadata.fromCache)ok();render()},err)}
-function subMonth(){un.m&&un.m();un.m=db.collection("days").where("date",">=",S.month+"-01").where("date","<=",S.month+"-31").onSnapshot(q=>{S.mdays=q.docs.map(d=>d.data());if(!q.metadata.fromCache)ok();render()},err);for(const k in staffSubs)staffSubs[k].sub()}
+function subMonth(){un.ed&&un.ed();S.edits=[];un.ed=db.collection("edits").where("date",">=",S.month+"-01").where("date","<=",S.month+"-31").onSnapshot(q=>{S.edits=q.docs.map(d=>d.data());render()},err);un.m&&un.m();un.m=db.collection("days").where("date",">=",S.month+"-01").where("date","<=",S.month+"-31").onSnapshot(q=>{S.mdays=q.docs.map(d=>d.data());if(!q.metadata.fromCache)ok();render()},err);for(const k in staffSubs)staffSubs[k].sub()}
 function subStaffView(){
   un.names=db.doc("public/names").onSnapshot(s=>{S.names=s.exists?(s.data().items||[]):[];S.dirLoaded=true;if(!s.metadata.fromCache)ok();render()},err);
   subMine();
@@ -600,7 +641,8 @@ function render(){
   const v=document.getElementById("view");
   const ae=document.activeElement;const keep=ae&&ae.id&&v.contains(ae)?{id:ae.id,v:ae.value,s:ae.selectionStart,e:ae.selectionEnd}:null;
   if(S.role==="staff")v.innerHTML=vStaff();
-  else v.innerHTML=holdBanner()+(S.tab==="inbox"?vInbox():S.tab==="day"?vDay():S.tab==="dir"?vDir():vSum());
+  else v.innerHTML=editBanner()+holdBanner()+(S.tab==="inbox"?vInbox():S.tab==="day"?vDay():S.tab==="dir"?vDir():vSum());
+  v.querySelectorAll("[data-edits]").forEach(b=>b.addEventListener("click",()=>editsPop(b.dataset.edits)));
   v.querySelectorAll(".banner [data-tab]").forEach(b=>b.addEventListener("click",()=>setTab(b.dataset.tab)));
   if(keep){const el=document.getElementById(keep.id);if(el){if(el.tagName==="INPUT"&&el.type!=="date")el.value=keep.v;el.focus();try{el.setSelectionRange(keep.s,keep.e)}catch(e){}}}
   const st=document.getElementById("stickyroot");
