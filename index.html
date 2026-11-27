@@ -486,6 +486,8 @@ const bioSet=v=>{try{v==null?localStorage.removeItem(bioKey()):localStorage.setI
 async function bioSupported(){try{return !!(SB&&window.PublicKeyCredential&&await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable())}catch(e){return false}}
 const pkCancelled=e=>/NotAllowed|AbortError|cancel|abort|not allowed|timed out/i.test(((e&&e.name)||"")+" "+((e&&e.message)||""));
 const pkMsg=e=>pkCancelled(e)?"ยกเลิกการสแกน ลองอีกครั้ง":/credential_not_found/i.test((e&&(e.code||e.message))||"")?"ยังไม่ได้ลงทะเบียนสแกนนิ้วนี้ เข้าด้วยรหัสก่อน แล้วเปิดใช้สแกนนิ้ว":"สแกนไม่สำเร็จ ลองอีกครั้งหรือเข้าด้วยรหัส";
+/* รหัสสาเหตุจริง ไว้แคปส่งมาตรวจ */
+const pkWhy=e=>[e&&e.code,e&&e.name,e&&e.message].filter(Boolean).join(" · ").slice(0,200);
 async function passkeySignIn(){const r=await SB.cl.auth.signInWithPasskey();if(r.error)throw r.error;if(!r.data||!r.data.session)throw new Error("no session");return r.data}
 async function bioEnroll(){
   const r=await SB.cl.auth.registerPasskey();
@@ -506,11 +508,11 @@ function bioUnlock(){bioLocked=false;["app","stickyroot","poproot","lockroot"].f
   document.getElementById("biolockroot").innerHTML="";unlockedOnce=true;if(S.lock.loaded)evalLock()}
 function bioSettings(){
   const on=!!bioGet();
-  pop('<h3>สแกนนิ้วเข้าสู่ระบบ</h3><div>'+(on?"เปิดใช้แล้วบนเครื่องนี้":"ครั้งต่อไปเข้าสู่ระบบด้วยการสแกนนิ้วหรือ Face ID ได้ ไม่ต้องพิมพ์รหัส แม้กด “ออก” แล้ว")+'</div><div style="font-size:13px;color:var(--muted)">เปิดเฉพาะเครื่องของคุณเอง ใครที่ปลดล็อกเครื่องนี้ได้ (รวมถึงด้วยรหัสเครื่อง) จะเข้าบัญชีนี้ได้</div><div class="acts"><button class="btn" id="x">ปิด</button><button class="btn '+(on?"danger":"primary")+'" id="biotog">'+(on?"ปิดการสแกนนิ้ว":"เปิดใช้สแกนนิ้ว")+'</button></div>',p=>{
+  pop('<h3>สแกนนิ้วเข้าสู่ระบบ</h3><div>'+(on?"เปิดใช้แล้วบนเครื่องนี้":"ครั้งต่อไปเข้าสู่ระบบด้วยการสแกนนิ้วหรือ Face ID ได้ ไม่ต้องพิมพ์รหัส แม้กด “ออก” แล้ว")+'</div><div style="font-size:13px;color:var(--muted)">เปิดเฉพาะเครื่องของคุณเอง ใครที่ปลดล็อกเครื่องนี้ได้ (รวมถึงด้วยรหัสเครื่อง) จะเข้าบัญชีนี้ได้</div><div class="lockmsg" id="pkerr" style="overflow-wrap:anywhere"></div><div class="acts"><button class="btn" id="x">ปิด</button><button class="btn '+(on?"danger":"primary")+'" id="biotog">'+(on?"ปิดการสแกนนิ้ว":"เปิดใช้สแกนนิ้ว")+'</button></div>',p=>{
     p.querySelector("#x").addEventListener("click",close);
     p.querySelector("#biotog").addEventListener("click",async e=>{const b=e.currentTarget;b.disabled=true;
       try{if(on){await bioDisable();close();toast("ปิดการสแกนนิ้วแล้ว")}else{await bioEnroll();close();toast("เปิดใช้สแกนนิ้วแล้ว")}}
-      catch(err){b.disabled=false;toast(on?"ปิดไม่สำเร็จ ลองอีกครั้ง":pkCancelled(err)?"ยกเลิกการสแกน":"เปิดใช้ไม่สำเร็จ ลองอีกครั้ง")}})})}
+      catch(err){b.disabled=false;p.querySelector("#pkerr").textContent=(on?"ปิดไม่สำเร็จ":pkCancelled(err)?"การสแกนถูกยกเลิกหรือไม่ได้รับอนุญาต":"เปิดใช้ไม่สำเร็จ")+" ("+pkWhy(err)+")"}})})}
 function bioInit(){
   if(!unlockedOnce&&bioGet())bioLock();
   bioSupported().then(ok=>{document.getElementById("biobtn").hidden=!ok})}
@@ -1328,7 +1330,7 @@ async function loginPasskey(){
   if(LG.busy)return;LG.busy=true;LG.msg="";
   const b=document.getElementById("lg-pk");if(b)b.disabled=true;        // ไม่วาดหน้าใหม่ก่อนเรียกสแกน (Safari ต้องต่อเนื่องจากการแตะ)
   try{await passkeySignIn();LG.busy=false;LG.pin="";LG.pw="";LG.code="";unlockedOnce=true;boot()}
-  catch(e){LG.busy=false;LG.msg=pkMsg(e);showLogin()}
+  catch(e){LG.busy=false;LG.msg=pkMsg(e)+" ("+pkWhy(e)+")";showLogin()}
 }
 
 boot();
